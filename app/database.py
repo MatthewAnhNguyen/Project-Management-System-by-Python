@@ -8,8 +8,10 @@ load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Khởi tạo Engine (Động cơ kết nối với MySQL)
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 # Tạo Session để sau này thực hiện thêm/sửa/xoá/đọc dữ liệu
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

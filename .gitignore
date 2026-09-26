@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+sql_app.db
+.idea/
+.venv/
+venv/

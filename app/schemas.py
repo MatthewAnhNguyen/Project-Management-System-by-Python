@@ -59,3 +59,47 @@ class WorkspaceMemberResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --- (MỚI) SCHEMAS CHO USER MỞ RỘNG ---
+class UserUpdate(BaseModel):
+    username:Optional[str]= None
+    email: Optional[str]= None
+
+class UserPasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+# --- (MỚI) SCHEMAS CHO TASK ---
+class TaskCreate(BaseModel):
+    title: str
+    description: Optional[str]=None
+    status: Optional[str]="TODO"
+    priority: Optional[str]="MEDIUM"
+    due_date: Optional[datetime]=None
+    assignee_id: Optional[int]=None
+
+class TaskUpdate(BaseModel):
+    title: Optional[str]=None
+    description: Optional[str]=None
+    status: Optional[str]=None
+    priority: Optional[str]=None
+    due_date: Optional[datetime]=None
+    assignee_id: Optional[str]=None
+
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    status: str
+    priority: str
+    due_date: Optional[datetime]
+    workspace_id: int
+    creator_id: int
+    assignee_id: Optional[int]
+    created_at: datetime
+    updated_at: Optional[datetime]
+    creator: Optional[UserResponse]=None
+    assignee: Optional[UserResponse]=None
+
+    class Config:
+        from_attributes=True

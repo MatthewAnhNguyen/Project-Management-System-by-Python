@@ -45,7 +45,7 @@ def get_workspaces(db: Session = Depends(get_db), current_user: models.User = De
 
 
 # 3. XEM CHI TIẾT 1 WORKSPACE
-@router.get("{workspace_id}", response_model=schemas.WorkspaceResponse)
+@router.get("/{workspace_id}", response_model=schemas.WorkspaceResponse)
 def get_workspace(workspace_id: int, db: Session = Depends(get_db),
                   current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
@@ -61,7 +61,7 @@ def get_workspace(workspace_id: int, db: Session = Depends(get_db),
 
 
 # 4. SỬA WORKSPACE (Chỉ Owner)
-@router.put("{workspace_id}", response_model=schemas.WorkspaceResponse)
+@router.put("/{workspace_id}", response_model=schemas.WorkspaceResponse)
 def update_workspace(workspace_id: int, update_data: schemas.WorkspaceCreate, db: Session = Depends(get_db),
                      current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
@@ -82,7 +82,7 @@ def update_workspace(workspace_id: int, update_data: schemas.WorkspaceCreate, db
 
 
 # 5. XÓA WORKSPACE (Chỉ Owner)
-@router.delete("{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_workspace(workspace_id: int, db: Session = Depends(get_db),
                      current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
@@ -100,7 +100,7 @@ def delete_workspace(workspace_id: int, db: Session = Depends(get_db),
 
 
 # 1. THÊM THÀNH VIÊN VÀO WORKSPACE (Chỉ Owner)
-@router.post("{workspace_id}/members", response_model=schemas.WorkspaceMemberResponse,
+@router.post("/{workspace_id}/members", response_model=schemas.WorkspaceMemberResponse,
           status_code=status.HTTP_201_CREATED)
 def add_workspace_member(workspace_id: int, member_data: schemas.WorkspaceMemberCreate, db: Session = Depends(get_db),
                          current_user: models.User = Depends(get_current_user)):
@@ -142,7 +142,7 @@ def add_workspace_member(workspace_id: int, member_data: schemas.WorkspaceMember
 
 
 # 2. XEM DANH SÁCH THÀNH VIÊN (Owner và Member đều xem được)
-@router.get("{workspace_id}/members", response_model=list[schemas.WorkspaceMemberResponse])
+@router.get("/{workspace_id}/members", response_model=list[schemas.WorkspaceMemberResponse])
 def get_workspace_members(workspace_id: int, db: Session = Depends(get_db),
                           current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
@@ -165,7 +165,7 @@ def get_workspace_members(workspace_id: int, db: Session = Depends(get_db),
 
 
 # 3. XÓA THÀNH VIÊN KHỎI WORKSPACE (Chỉ Owner)
-@router.delete("{workspace_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{workspace_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_workspace_member(workspace_id: int, user_id: int, db: Session = Depends(get_db),
                             current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
