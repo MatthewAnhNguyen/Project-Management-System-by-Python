@@ -5,6 +5,7 @@ from typing import Optional
 from app import models, schemas
 from app.database import get_db
 from app.security import get_current_user
+from app.routers.comments import log_task_activity
 
 router = APIRouter(tags=["Tasks"])
 
@@ -54,6 +55,16 @@ def create_task(
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
+
+    # Ghi log lịch sử hoạt động
+    log_task_activity(
+        db=db,
+        task_id=new_task.id,
+        user_id=current_user.id,
+        action_type="TASK_CREATED",
+        description=f"{current_user.username} đã tạo công việc '{new_task.title}'"
+    )
+
     return new_task
 
 
@@ -119,12 +130,44 @@ def update_task(
     if task_data.assignee_id:
         check_workspace_access(task.workspace_id, task_data.assignee_id, db)
 
+    # Ghi nhận các trường cũ để so sánh log hoạt động
+    old_status = task.status
+    old_assignee_id = task.assignee_id
+
     # Cập nhật các trường được truyền lên
     update_dict = task_data.dict(exclude_unset=True)
     for key, value in update_dict.items():
         setattr(task, key, value)
     db.commit()
     db.refresh(task)
+
+    # Tự động ghi log lịch sử
+    if "status" in update_dict and update_dict["status"] != old_status:
+        log_task_activity(
+            db=db,
+            task_id=task.id,
+            user_id=current_user.id,
+            action_type="STATUS_CHANGED",
+            description=f"{current_user.username} đã chuyển trạng thái từ '{old_status}' sang '{task.status}'"
+        )
+    elif "assignee_id" in update_dict and update_dict["assignee_id"] != old_assignee_id:
+        assignee_name = task.assignee.username if task.assignee else "Chưa gán"
+        log_task_activity(
+            db=db,
+            task_id=task.id,
+            user_id=current_user.id,
+            action_type="ASSIGNEE_CHANGED",
+            description=f"{current_user.username} đã đổi người thực hiện thành '{assignee_name}'"
+        )
+    elif update_dict:
+        log_task_activity(
+            db=db,
+            task_id=task.id,
+            user_id=current_user.id,
+            action_type="TASK_UPDATED",
+            description=f"{current_user.username} đã cập nhật thông tin công việc"
+        )
+
     return task
 
 
@@ -146,3 +189,51 @@ def delete_task(
     db.delete(task)
     db.commit()
     return
+
+
+# 7. KANBAN BOARD VIEW (Phục vụ giao diện bảng Kanban)
+@router.get("/workspaces/{workspace_id}/kanban", response_model=schemas.KanbanBoardResponse)
+def get_workspace_kanban(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    check_workspace_access(workspace_id, current_user.id, db)
+    tasks = db.query(models.Task).filter(models.Task.workspace_id == workspace_id).all()
+
+    return {
+        "workspace_id": workspace_id,
+        "todo": [t for t in tasks if t.status == "TODO"],
+        "in_progress": [t for t in tasks if t.status == "IN_PROGRESS"],
+        "done": [t for t in tasks if t.status == "DONE"],
+        "cancelled": [t for t in tasks if t.status == "CANCELLED"]
+    }
+
+
+# 8. THỐNG KÊ TIẾN ĐỘ WORKSPACE (Phục vụ giao diện Dashboard / Summary)
+@router.get("/workspaces/{workspace_id}/summary", response_model=schemas.WorkspaceSummaryResponse)
+def get_workspace_summary(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    check_workspace_access(workspace_id, current_user.id, db)
+    tasks = db.query(models.Task).filter(models.Task.workspace_id == workspace_id).all()
+
+    total = len(tasks)
+    todo = len([t for t in tasks if t.status == "TODO"])
+    in_progress = len([t for t in tasks if t.status == "IN_PROGRESS"])
+    done = len([t for t in tasks if t.status == "DONE"])
+    cancelled = len([t for t in tasks if t.status == "CANCELLED"])
+    completion_rate = round((done / total * 100), 2) if total > 0 else 0.0
+
+    return {
+        "workspace_id": workspace_id,
+        "total_tasks": total,
+        "todo_count": todo,
+        "in_progress_count": in_progress,
+        "done_count": done,
+        "cancelled_count": cancelled,
+        "completion_rate": completion_rate
+    }
+

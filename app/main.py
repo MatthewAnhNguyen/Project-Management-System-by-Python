@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from app.database import engine, Base
-
 # Import các router
-from app.routers import auth, users, workspaces, tasks
+from app.routers import auth, users, workspaces, tasks, comments, meetings
 
 # Tạo database
 Base.metadata.create_all(bind=engine)
@@ -18,6 +17,8 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(workspaces.router)
 app.include_router(tasks.router)
+app.include_router(comments.router)
+app.include_router(meetings.router)
 
 # API kiểm tra server
 @app.get("/health", tags=["System"])

@@ -19,6 +19,14 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True # Bắt buộc có để chuyển đổi dữ liệu từ SQLAlchemy sang Pydantic
 
+class UserSimpleResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
 # Dữ liệu client gửi lên khi Đăng nhập
 class UserLogin(BaseModel):
     email: str
@@ -79,12 +87,12 @@ class TaskCreate(BaseModel):
     assignee_id: Optional[int]=None
 
 class TaskUpdate(BaseModel):
-    title: Optional[str]=None
-    description: Optional[str]=None
-    status: Optional[str]=None
-    priority: Optional[str]=None
-    due_date: Optional[datetime]=None
-    assignee_id: Optional[str]=None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    due_date: Optional[datetime] = None
+    assignee_id: Optional[int] = None
 
 class TaskResponse(BaseModel):
     id: int
@@ -98,8 +106,86 @@ class TaskResponse(BaseModel):
     assignee_id: Optional[int]
     created_at: datetime
     updated_at: Optional[datetime]
-    creator: Optional[UserResponse]=None
-    assignee: Optional[UserResponse]=None
+    creator: Optional[UserResponse] = None
+    assignee: Optional[UserResponse] = None
 
     class Config:
-        from_attributes=True
+        from_attributes = True
+
+# --- (MỚI) SCHEMAS CHO BÌNH LUẬN (COMMENTS) ---
+class CommentCreate(BaseModel):
+    content: str
+
+class CommentResponse(BaseModel):
+    id: int
+    task_id: int
+    user_id: int
+    content: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    user: Optional[UserSimpleResponse] = None
+
+    class Config:
+        from_attributes = True
+
+# --- (MỚI) SCHEMAS CHO LỊCH SỬ HOẠT ĐỘNG (ACTIVITIES) ---
+class TaskActivityResponse(BaseModel):
+    id: int
+    task_id: int
+    user_id: Optional[int] = None
+    action_type: str
+    description: str
+    created_at: datetime
+    user: Optional[UserSimpleResponse] = None
+
+    class Config:
+        from_attributes = True
+
+# --- (MỚI) SCHEMAS PHỤC VỤ GIAO DIỆN TASK UI / KANBAN / SUMMARY ---
+class KanbanBoardResponse(BaseModel):
+    workspace_id: int
+    todo: list[TaskResponse] = []
+    in_progress: list[TaskResponse] = []
+    done: list[TaskResponse] = []
+    cancelled: list[TaskResponse] = []
+
+class WorkspaceSummaryResponse(BaseModel):
+    workspace_id: int
+    total_tasks: int
+    todo_count: int
+    in_progress_count: int
+    done_count: int
+    cancelled_count: int
+    completion_rate: float
+
+# --- SCHEMAS Phục vụ cho MEETING
+class MeetingCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    meeting_link: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[int] = None
+
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    meeting_link: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+
+class MeetingResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    meeting_link: Optional[str]
+    start_time: datetime
+    end_time: datetime
+    workspace_id: int
+    creator_id: int
+    task_id: Optional[int]
+    created_at: datetime
+    creator: Optional[UserSimpleResponse] = None
+
+    class Config:
+        from_attributes = True
