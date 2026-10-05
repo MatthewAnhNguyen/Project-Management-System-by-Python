@@ -1,0 +1,79 @@
+/* Custom styles for Project Management System */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Kanban Column & Card Animations */
+.kanban-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: grab;
+}
+.kanban-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+.kanban-card:active {
+    cursor: grabbing;
+}
+
+/* Modal Overlay */
+.modal-backdrop {
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+/* FullCalendar Customizations */
+.fc {
+    font-family: inherit;
+}
+.fc-toolbar-title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #0f172a;
+}
+.fc .fc-button-primary {
+    background-color: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+    border-radius: 0.5rem !important;
+    font-weight: 600 !important;
+    text-transform: capitalize;
+}
+.fc .fc-button-primary:hover {
+    background-color: #4338ca !important;
+    border-color: #4338ca !important;
+}
+.fc .fc-button-primary:disabled {
+    background-color: #a5b4fc !important;
+    border-color: #a5b4fc !important;
+}
+.fc-event {
+    cursor: pointer;
+    border-radius: 4px !important;
+    padding: 2px 4px !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.fc-daygrid-day:hover {
+    background-color: #f8fafc;
+}
