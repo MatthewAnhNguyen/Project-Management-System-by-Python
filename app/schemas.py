@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
 
 # 2. Schema cho dữ liệu trả về (Response) - TUYỆT ĐỐI KHÔNG CÓ password
 class UserResponse(BaseModel):
-    id: int
+    id: str
     username: str
     email: str
     role: str
@@ -36,24 +36,24 @@ class WorkspaceCreate(BaseModel):
 
 # Dữ liệu trả về cho client
 class WorkspaceResponse(BaseModel):
-    id: int
+    id: str
     name: str
     description: Optional[str]
-    owner_id: int
+    owner_id: str
     created_at: datetime
 
     class Config:
         from_attributes = True
 # --- (MỚI) SCHEMA CHO THÀNH VIÊN WORKSPACE ---
-# Client chỉ cần gửi lên user_id muốn thêm
+# Client chỉ cần gửi lên user_id muốn thêm dạng chuỗi
 class WorkspaceMemberCreate(BaseModel):
-    user_id: int
+    user_id: str
 
 # Dữ liệu trả về
 class WorkspaceMemberResponse(BaseModel):
     id: int
-    workspace_id: int
-    user_id: int
+    workspace_id: str
+    user_id: str
     role: str
     joined_at: datetime
 
@@ -69,37 +69,66 @@ class UserPasswordChange(BaseModel):
     old_password: str
     new_password: str
 
+# --- (MỚI) SCHEMAS CHO TRẠNG THÁI TASK (TASK STATUS) ---
+class TaskStatusCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    color: Optional[str] = None
+    order: Optional[int] = 0
+
+class TaskStatusUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[str] = None
+    order: Optional[int] = None
+
+class TaskStatusResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    color: Optional[str] = None
+    order: int
+    workspace_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # --- (MỚI) SCHEMAS CHO TASK ---
 class TaskCreate(BaseModel):
     title: str
-    description: Optional[str]=None
-    status: Optional[str]="TODO"
-    priority: Optional[str]="MEDIUM"
-    due_date: Optional[datetime]=None
-    assignee_id: Optional[int]=None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    status_id: Optional[int] = None
+    priority: Optional[str] = "MEDIUM"
+    due_date: Optional[datetime] = None
+    assignee_id: Optional[str] = None
 
 class TaskUpdate(BaseModel):
-    title: Optional[str]=None
-    description: Optional[str]=None
-    status: Optional[str]=None
-    priority: Optional[str]=None
-    due_date: Optional[datetime]=None
-    assignee_id: Optional[str]=None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    status_id: Optional[int] = None
+    priority: Optional[str] = None
+    due_date: Optional[datetime] = None
+    assignee_id: Optional[str] = None
 
 class TaskResponse(BaseModel):
     id: int
     title: str
     description: Optional[str]
     status: str
+    status_id: Optional[int] = None
     priority: str
     due_date: Optional[datetime]
-    workspace_id: int
-    creator_id: int
-    assignee_id: Optional[int]
+    workspace_id: str
+    creator_id: str
+    assignee_id: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime]
-    creator: Optional[UserResponse]=None
-    assignee: Optional[UserResponse]=None
+    creator: Optional[UserResponse] = None
+    assignee: Optional[UserResponse] = None
+    task_status: Optional[TaskStatusResponse] = None
 
     class Config:
-        from_attributes=True
+        from_attributes = True

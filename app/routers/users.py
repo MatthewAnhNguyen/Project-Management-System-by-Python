@@ -78,7 +78,7 @@ def search_users(
 # 5. XEM PROFILE NGƯỜI DÙNG THEO ID
 @router.get("/{user_id}", response_model=schemas.UserResponse)
 def get_user_by_id(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: models.User=Depends(get_current_user)
 ):

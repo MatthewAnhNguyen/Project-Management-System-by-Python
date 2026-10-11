@@ -19,7 +19,17 @@ app.include_router(users.router)
 app.include_router(workspaces.router)
 app.include_router(tasks.router)
 
+import os
+from fastapi.responses import FileResponse
+
+STATIC_INDEX = os.path.join(os.path.dirname(__file__), "static", "index.html")
+
 # API kiểm tra server
 @app.get("/health", tags=["System"])
 def health_check():
     return {"message": "Server is running perfectly"}
+
+# Web giao diện trực quan hoàn chỉnh để xem và test hệ thống
+@app.get("/", response_class=FileResponse, tags=["Web UI"])
+def index_page():
+    return FileResponse(STATIC_INDEX)
