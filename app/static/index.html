@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMSPro - Task Management</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.65rem center;
+            background-size: 0.9em;
+            padding-right: 2rem !important;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- ============================================================== -->
+    <!-- TOP NAVIGATION BAR                                            -->
+    <!-- ============================================================== -->
+    <header class="bg-white border-b border-slate-200/90 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <div class="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Left: Logo & Sub-badge -->
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-100">
+                    <i class="fa-solid fa-bars-staggered text-base"></i>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xl font-extrabold tracking-tight text-slate-900">PMS<span class="text-indigo-600">Pro</span></span>
+                    <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">Task Management</span>
+                </div>
+            </div>
+
+            <!-- Right Controls: Workspace Dropdown, Buttons, User Profile -->
+            <div class="flex items-center gap-3">
+                <!-- Workspace Switcher -->
+                <div class="relative">
+                    <select id="workspace-select" onchange="onWorkspaceChange()" class="bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 max-w-[220px] truncate shadow-sm transition">
+                        <option value="">Đang tải Workspace...</option>
+                    </select>
+                </div>
+
+                <!-- Create Workspace Button -->
+                <button onclick="openModal('create-workspace-modal')" title="Tạo Workspace mới" class="w-8 h-8 rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/50 flex items-center justify-center text-sm font-bold shadow-sm transition">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+
+                <!-- Members Button -->
+                <button onclick="openMembersModal()" title="Thành viên Workspace" class="w-8 h-8 rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/50 flex items-center justify-center text-xs shadow-sm transition">
+                    <i class="fa-solid fa-user-group"></i>
+                </button>
+
+                <!-- API Docs Link -->
+                <a href="/docs" target="_blank" class="h-8 px-3 rounded-xl border border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/50 flex items-center gap-1.5 text-xs font-semibold shadow-sm transition">
+                    <i class="fa-solid fa-book-open text-[11px] text-slate-500"></i>
+                    <span>API Docs</span>
+                </a>
+
+                <!-- User Profile Pill with Dropdown Trigger -->
+                <div class="relative">
+                    <div id="user-profile-pill" onclick="toggleUserDropdown(event)" title="Nhấn để xem tùy chọn tài khoản" class="flex items-center gap-2.5 pl-1.5 pr-3 py-1 bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 rounded-full cursor-pointer select-none transition">
+                        <div id="user-avatar" class="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[11px] shrink-0">
+                            OW
+                        </div>
+                        <div class="text-left leading-tight">
+                            <div class="flex items-center gap-1.5">
+                                <span id="user-username" class="text-xs font-bold text-slate-800">owner_4466</span>
+                                <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+                            </div>
+                            <div id="user-email-id" class="text-[10px] text-slate-400 font-normal truncate max-w-[170px]">owner_4466@demo.com • ID: t5xgffvkqYZa</div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown Menu -->
+                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 text-xs">
+                        <div class="px-3.5 py-2.5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+                            <div class="font-bold text-slate-800" id="dropdown-user-name">owner_4466</div>
+                            <div class="text-[10px] text-slate-400 truncate mt-0.5" id="dropdown-user-email">owner_4466@demo.com</div>
+                        </div>
+                        <div class="p-1">
+                            <button onclick="openChangePasswordModal()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-indigo-50/70 text-slate-700 hover:text-indigo-600 font-semibold flex items-center gap-2.5 transition">
+                                <i class="fa-solid fa-key text-slate-400"></i>
+                                <span>Đổi mật khẩu</span>
+                            </button>
+                            <button onclick="logout()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50/70 text-slate-600 hover:text-rose-600 font-semibold flex items-center gap-2.5 transition border-t border-slate-100 mt-1">
+                                <i class="fa-solid fa-right-from-bracket text-slate-400"></i>
+                                <span>Đăng xuất</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================================== -->
+    <!-- MAIN CONTENT CONTAINER                                         -->
+    <!-- ============================================================== -->
+    <main class="flex-1 max-w-[1440px] w-full mx-auto px-6 py-8 space-y-6">
+
+        <!-- 1. WORKSPACE HEADER CARD -->
+        <section class="bg-white rounded-2xl border border-slate-200/90 p-7 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h1 id="ws-title" class="text-2xl font-black text-slate-900 tracking-tight">Dự án Phần Mềm #4466</h1>
+                    <span id="ws-role-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100">
+                        OWNER (Chủ Workspace)
+                    </span>
+                </div>
+                <p id="ws-desc" class="text-sm text-slate-400 mt-1.5 font-normal">Không gian làm việc phát triển ứng dụng</p>
+            </div>
+
+            <!-- Stats Counters -->
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="bg-slate-50/80 border border-slate-100 rounded-2xl px-5 py-3 text-center min-w-[86px]">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">TẤT CẢ</span>
+                    <span id="stat-total" class="text-2xl font-black text-slate-800 block mt-0.5">0</span>
+                </div>
+                <div class="bg-slate-50/80 border border-slate-100 rounded-2xl px-5 py-3 text-center min-w-[86px]">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">TODO</span>
+                    <span id="stat-todo" class="text-2xl font-black text-slate-600 block mt-0.5">0</span>
+                </div>
+                <div class="bg-slate-50/80 border border-slate-100 rounded-2xl px-5 py-3 text-center min-w-[86px]">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-sky-600 block">IN_PROGRESS</span>
+                    <span id="stat-inprogress" class="text-2xl font-black text-sky-600 block mt-0.5">0</span>
+                </div>
+                <div class="bg-slate-50/80 border border-slate-100 rounded-2xl px-5 py-3 text-center min-w-[86px]">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">DONE</span>
+                    <span id="stat-done" class="text-2xl font-black text-emerald-600 block mt-0.5">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. TASKS LIST CARD -->
+        <section class="bg-white rounded-2xl border border-slate-200/90 p-7 shadow-sm">
+            
+            <!-- Header Row: Title & Create Task Button -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 gap-4 flex-wrap">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span>📋</span> Bảng Công Việc Tập Trung (Tasks)
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Tất cả công việc được lưu trên 1 bảng duy nhất có thuộc tính trạng thái.</p>
+                </div>
+                <button onclick="openCreateTaskModal()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Tạo Công Việc Mới</span>
+                </button>
+            </div>
+
+            <!-- Filter Toolbar -->
+            <div class="my-5 p-3.5 bg-slate-50/80 border border-slate-100 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- Status Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1">
+                            <i class="fa-solid fa-filter text-[10px]"></i> TRẠNG THÁI:
+                        </label>
+                        <select id="filter-status" onchange="applyFilters()" class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition">
+                            <option value="">-- Tất cả trạng thái --</option>
+                            <option value="TODO">TODO</option>
+                            <option value="IN_PROGRESS">IN_PROGRESS</option>
+                            <option value="DONE">DONE</option>
+                        </select>
+                    </div>
+
+                    <!-- Priority Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">ƯU TIÊN:</label>
+                        <select id="filter-priority" onchange="applyFilters()" class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition">
+                            <option value="">-- Tất cả --</option>
+                            <option value="LOW">LOW</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="HIGH">HIGH</option>
+                            <option value="URGENT">URGENT</option>
+                        </select>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Tìm kiếm công việc..." class="pl-8 pr-3 py-1.5 w-60 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition">
+                    </div>
+                </div>
+
+                <!-- Right info: Task count and Reset button -->
+                <div class="flex items-center gap-3 text-xs">
+                    <span id="filtered-count" class="font-medium text-slate-500">0 công việc</span>
+                    <button onclick="resetFilters()" class="font-bold text-indigo-600 hover:text-indigo-800 transition">Đặt lại bộ lọc</button>
+                </div>
+            </div>
+
+            <!-- Tasks Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                            <th class="py-3 px-4 w-16">ID</th>
+                            <th class="py-3 px-4">TIÊU ĐỀ & MÔ TẢ</th>
+                            <th class="py-3 px-4 w-44">TRẠNG THÁI (STATUS)</th>
+                            <th class="py-3 px-4 w-36">MỨC ĐỘ ƯU TIÊN</th>
+                            <th class="py-3 px-4 w-40">HẠN CHÓT (DEADLINE)</th>
+                            <th class="py-3 px-4 w-36">NGƯỜI THỰC HIỆN</th>
+                            <th class="py-3 px-4 w-28 text-center">THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-table-body" class="divide-y divide-slate-100 text-xs">
+                        <!-- Dynamic task rows inserted here -->
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-lg mb-2"></i>
+                                <div>Đang tải danh sách công việc...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================================== -->
+    <!-- MODALS SECTION                                                 -->
+    <!-- ============================================================== -->
+
+    <!-- 1. AUTH MODAL (LOGIN / REGISTER) -->
+    <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-md p-7 rounded-2xl shadow-2xl border border-slate-100 transition-all">
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto mb-3 shadow-lg shadow-indigo-100 font-black text-xl">
+                    <i class="fa-solid fa-bars-staggered"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-900 tracking-tight">PMS<span class="text-indigo-600">Pro</span> System</h3>
+                <p class="text-xs text-slate-400 mt-1">Đăng nhập tài khoản để vào Bảng Công Việc</p>
+            </div>
+
+            <!-- Auth Tabs -->
+            <div class="flex border-b border-slate-200 mb-5 text-sm font-bold">
+                <button id="tab-login" onclick="toggleAuthTab('login')" class="flex-1 pb-2.5 text-indigo-600 border-b-2 border-indigo-600">Đăng nhập</button>
+                <button id="tab-register" onclick="toggleAuthTab('register')" class="flex-1 pb-2.5 text-slate-400 hover:text-slate-600 border-b-2 border-transparent">Đăng ký mới</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
+                    <input type="email" id="login-email" required placeholder="owner_4466@demo.com" value="owner_4466@demo.com" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mật khẩu</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" value="123456" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 transition">Đăng nhập ngay</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tên hiển thị (Username)</label>
+                    <input type="text" id="reg-username" required placeholder="owner_4466" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
+                    <input type="email" id="reg-email" required placeholder="owner_4466@demo.com" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mật khẩu</label>
+                    <input type="password" id="reg-password" required placeholder="Tối thiểu 6 ký tự" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-100 transition">Đăng ký tài khoản</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. CREATE / EDIT TASK MODAL -->
+    <div id="task-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-lg p-6 rounded-2xl shadow-xl border border-slate-100">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 id="task-modal-title" class="text-base font-bold text-slate-900">Tạo Công Việc Mới</h3>
+                <button onclick="closeModal('task-modal')" class="text-slate-400 hover:text-slate-600 text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="form-task" onsubmit="handleSaveTask(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="task-id">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Tiêu đề công việc <span class="text-rose-500">*</span></label>
+                    <input type="text" id="task-title" required placeholder="Ví dụ: Xây dựng sơ đồ cơ sở dữ liệu" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Mô tả chi tiết</label>
+                    <textarea id="task-desc" rows="3" placeholder="Mô tả các yêu cầu hoặc nhiệm vụ cụ thể..." class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Trạng thái (Status)</label>
+                        <select id="task-status" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                            <option value="TODO">TODO</option>
+                            <option value="IN_PROGRESS">IN_PROGRESS</option>
+                            <option value="DONE">DONE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Mức độ ưu tiên</label>
+                        <select id="task-priority" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                            <option value="LOW">LOW</option>
+                            <option value="MEDIUM" selected>MEDIUM</option>
+                            <option value="HIGH">HIGH</option>
+                            <option value="URGENT">URGENT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Hạn chót (Deadline)</label>
+                        <input type="date" id="task-deadline" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Người thực hiện (Assignee)</label>
+                        <select id="task-assignee" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                            <option value="">-- Chưa giao --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('task-modal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-semibold">Hủy</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm">Lưu Công Việc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. CREATE WORKSPACE MODAL -->
+    <div id="create-workspace-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-slate-100">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 class="text-base font-bold text-slate-900">Tạo Không Gian Làm Việc Mới</h3>
+                <button onclick="closeModal('create-workspace-modal')" class="text-slate-400 hover:text-slate-600 text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form onsubmit="handleCreateWorkspace(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Tên Workspace <span class="text-rose-500">*</span></label>
+                    <input type="text" id="ws-new-name" required placeholder="Ví dụ: Dự án Phần Mềm #4466" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Mô tả</label>
+                    <input type="text" id="ws-new-desc" placeholder="Ví dụ: Không gian làm việc phát triển ứng dụng" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                </div>
+                <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('create-workspace-modal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-semibold">Hủy</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm">Tạo Ngay</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. WORKSPACE MEMBERS MODAL -->
+    <div id="members-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-lg p-6 rounded-2xl shadow-xl border border-slate-100">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 class="text-base font-bold text-slate-900">Thành Viên Trong Workspace</h3>
+                <button onclick="closeModal('members-modal')" class="text-slate-400 hover:text-slate-600 text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <!-- Add Member Form -->
+            <form onsubmit="handleAddMember(event)" class="flex gap-2 mb-4 text-xs">
+                <input type="text" id="member-user-id" required placeholder="Nhập User ID (chuỗi 12 ký tự) muốn thêm..." class="flex-1 px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shrink-0">Thêm Thành Viên</button>
+            </form>
+
+            <!-- Members List -->
+            <div class="space-y-2 max-h-60 overflow-y-auto" id="members-list">
+                <div class="text-xs text-slate-400 text-center py-4">Đang tải thành viên...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. CHANGE PASSWORD MODAL -->
+    <div id="change-password-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-slate-100">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-bold shadow-sm">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Đổi Mật Khẩu Cá Nhân</h3>
+                        <p class="text-[11px] text-slate-400 font-normal">Cập nhật mật khẩu bảo mật tài khoản</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('change-password-modal')" class="text-slate-400 hover:text-slate-600 text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="form-change-password" onsubmit="handleChangePassword(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Mật khẩu hiện tại <span class="text-rose-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="cp-old-password" required placeholder="Nhập mật khẩu hiện tại" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Mật khẩu mới <span class="text-rose-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="cp-new-password" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Xác nhận mật khẩu mới <span class="text-rose-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="cp-confirm-password" required minlength="6" placeholder="Nhập lại mật khẩu mới" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none">
+                    </div>
+                </div>
+                <div id="cp-msg" class="hidden p-2.5 rounded-xl text-xs font-semibold"></div>
+                <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('change-password-modal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-semibold">Hủy</button>
+                    <button type="submit" id="cp-submit-btn" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm transition">Xác Nhận Đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- JAVASCRIPT LOGIC                                               -->
+    <!-- ============================================================== -->
+    <script>
+        // Global App State
+        let currentUser = null;
+        let workspaces = [];
+        let currentWorkspace = null;
+        let allTasks = [];
+        let workspaceMembers = [];
+
+        // API Helper
+        async function api(endpoint, method = "GET", body = null) {
+            const token = localStorage.getItem("token");
+            const headers = { "Content-Type": "application/json" };
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
+
+            try {
+                const res = await fetch(endpoint, options);
+                if (res.status === 401) {
+                    localStorage.removeItem("token");
+                    showAuthModal();
+                    throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+                }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ detail: "Đã có lỗi xảy ra" }));
+                    throw new Error(err.detail || "Yêu cầu thất bại");
+                }
+                if (res.status === 204) return null;
+                return await res.json();
+            } catch (error) {
+                console.error("API Error:", error);
+                throw error;
+            }
+        }
+
+        // --- AUTH LOGIC ---
+        function showAuthModal() {
+            document.getElementById("auth-modal").classList.remove("hidden");
+        }
+        function hideAuthModal() {
+            document.getElementById("auth-modal").classList.add("hidden");
+        }
+
+        function toggleAuthTab(tab) {
+            const loginBtn = document.getElementById("tab-login");
+            const regBtn = document.getElementById("tab-register");
+            const formLogin = document.getElementById("form-login");
+            const formReg = document.getElementById("form-register");
+
+            if (tab === "login") {
+                loginBtn.className = "flex-1 pb-2.5 text-indigo-600 border-b-2 border-indigo-600";
+                regBtn.className = "flex-1 pb-2.5 text-slate-400 hover:text-slate-600 border-b-2 border-transparent";
+                formLogin.classList.remove("hidden");
+                formReg.classList.add("hidden");
+            } else {
+                regBtn.className = "flex-1 pb-2.5 text-emerald-600 border-b-2 border-emerald-600";
+                loginBtn.className = "flex-1 pb-2.5 text-slate-400 hover:text-slate-600 border-b-2 border-transparent";
+                formLogin.classList.add("hidden");
+                formReg.classList.remove("hidden");
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById("login-email").value.trim();
+            const password = document.getElementById("login-password").value;
+            try {
+                const res = await api("/auth/login", "POST", { email, password });
+                localStorage.setItem("token", res.access_token);
+                hideAuthModal();
+                await initApp();
+            } catch (err) {
+                alert("Đăng nhập thất bại: " + err.message);
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const username = document.getElementById("reg-username").value.trim();
+            const email = document.getElementById("reg-email").value.trim();
+            const password = document.getElementById("reg-password").value;
+            try {
+                await api("/auth/register", "POST", { username, email, password });
+                alert("Đăng ký thành công! Đang tự động đăng nhập...");
+                const res = await api("/auth/login", "POST", { email, password });
+                localStorage.setItem("token", res.access_token);
+                hideAuthModal();
+                await initApp();
+            } catch (err) {
+                alert("Đăng ký thất bại: " + err.message);
+            }
+        }
+
+        function logout() {
+            if (confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
+                localStorage.removeItem("token");
+                location.reload();
+            }
+        }
+
+        // --- MODAL UTILS ---
+        function openModal(id) {
+            document.getElementById(id).classList.remove("hidden");
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.add("hidden");
+        }
+
+        // --- APP INITIALIZATION ---
+        async function initApp() {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                showAuthModal();
+                return;
+            }
+
+            try {
+                // 1. Get Current User Info
+                currentUser = await api("/users/me");
+                renderUserInfo(currentUser);
+
+                // 2. Load Workspaces
+                await loadWorkspaces();
+            } catch (err) {
+                console.error("Initialization error:", err);
+            }
+        }
+
+        function renderUserInfo(user) {
+            const initials = (user.username || "OW").substring(0, 2).toUpperCase();
+            document.getElementById("user-avatar").textContent = initials;
+            document.getElementById("user-username").textContent = user.username;
+            document.getElementById("user-email-id").textContent = `${user.email} • ID: ${user.id}`;
+            const dropName = document.getElementById("dropdown-user-name");
+            const dropEmail = document.getElementById("dropdown-user-email");
+            if (dropName) dropName.textContent = user.username;
+            if (dropEmail) dropEmail.textContent = user.email;
+        }
+
+        // --- USER DROPDOWN & PASSWORD CHANGE LOGIC ---
+        function toggleUserDropdown(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById("user-dropdown-menu");
+            if (menu) menu.classList.toggle("hidden");
+        }
+
+        function openChangePasswordModal() {
+            const menu = document.getElementById("user-dropdown-menu");
+            if (menu) menu.classList.add("hidden");
+
+            document.getElementById("cp-old-password").value = "";
+            document.getElementById("cp-new-password").value = "";
+            document.getElementById("cp-confirm-password").value = "";
+            const msgEl = document.getElementById("cp-msg");
+            msgEl.className = "hidden p-2.5 rounded-xl text-xs font-semibold";
+            msgEl.textContent = "";
+
+            openModal("change-password-modal");
+        }
+
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            const oldPassword = document.getElementById("cp-old-password").value;
+            const newPassword = document.getElementById("cp-new-password").value;
+            const confirmPassword = document.getElementById("cp-confirm-password").value;
+            const msgEl = document.getElementById("cp-msg");
+            const submitBtn = document.getElementById("cp-submit-btn");
+
+            msgEl.className = "hidden p-2.5 rounded-xl text-xs font-semibold";
+            msgEl.textContent = "";
+
+            if (newPassword.length < 6) {
+                msgEl.className = "p-2.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100 block";
+                msgEl.textContent = "Mật khẩu mới phải có tối thiểu 6 ký tự!";
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                msgEl.className = "p-2.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100 block";
+                msgEl.textContent = "Mật khẩu xác nhận không khớp với mật khẩu mới!";
+                return;
+            }
+
+            if (oldPassword === newPassword) {
+                msgEl.className = "p-2.5 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 block";
+                msgEl.textContent = "Mật khẩu mới không được trùng với mật khẩu cũ!";
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Đang xử lý...";
+
+            try {
+                const res = await api("/users/me/password", "PUT", {
+                    old_password: oldPassword,
+                    new_password: newPassword
+                });
+
+                msgEl.className = "p-2.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 block";
+                msgEl.textContent = (res && res.message) ? res.message : "Đổi mật khẩu thành công!";
+
+                setTimeout(() => {
+                    closeModal("change-password-modal");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Xác Nhận Đổi Mật Khẩu";
+                }, 1500);
+            } catch (err) {
+                msgEl.className = "p-2.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100 block";
+                msgEl.textContent = err.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ!";
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Xác Nhận Đổi Mật Khẩu";
+            }
+        }
+
+        // Đóng dropdown khi click ra ngoài
+        document.addEventListener("click", (e) => {
+            const pill = document.getElementById("user-profile-pill");
+            const menu = document.getElementById("user-dropdown-menu");
+            if (menu && !menu.classList.contains("hidden")) {
+                if (pill && !pill.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.add("hidden");
+                }
+            }
+        });
+
+        // --- WORKSPACES LOGIC ---
+        async function loadWorkspaces() {
+            try {
+                workspaces = await api("/workspaces");
+                const select = document.getElementById("workspace-select");
+                select.innerHTML = "";
+
+                if (workspaces.length === 0) {
+                    select.innerHTML = `<option value="">Chưa có Workspace</option>`;
+                    document.getElementById("ws-title").textContent = "Chưa có Workspace";
+                    document.getElementById("ws-desc").textContent = "Vui lòng bấm nút '+' ở trên để tạo Workspace mới.";
+                    renderTasks([]);
+                    return;
+                }
+
+                workspaces.forEach(ws => {
+                    const opt = document.createElement("option");
+                    opt.value = ws.id;
+                    opt.textContent = ws.name;
+                    select.appendChild(opt);
+                });
+
+                // Select the first workspace or preserved one
+                const savedWsId = localStorage.getItem("selected_workspace_id");
+                const defaultWs = workspaces.find(w => w.id === savedWsId) || workspaces[0];
+                select.value = defaultWs.id;
+                currentWorkspace = defaultWs;
+                localStorage.setItem("selected_workspace_id", defaultWs.id);
+
+                updateWorkspaceUI(defaultWs);
+                await loadWorkspaceDetails(defaultWs.id);
+            } catch (err) {
+                console.error("Error loading workspaces:", err);
+            }
+        }
+
+        async function onWorkspaceChange() {
+            const select = document.getElementById("workspace-select");
+            const wsId = select.value;
+            currentWorkspace = workspaces.find(w => w.id === wsId);
+            if (currentWorkspace) {
+                localStorage.setItem("selected_workspace_id", wsId);
+                updateWorkspaceUI(currentWorkspace);
+                await loadWorkspaceDetails(wsId);
+            }
+        }
+
+        function updateWorkspaceUI(ws) {
+            document.getElementById("ws-title").textContent = ws.name;
+            document.getElementById("ws-desc").textContent = ws.description || "Không gian làm việc phát triển ứng dụng";
+
+            const isOwner = currentUser && ws.owner_id === currentUser.id;
+            const badge = document.getElementById("ws-role-badge");
+            if (isOwner) {
+                badge.textContent = "OWNER (Chủ Workspace)";
+                badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100";
+            } else {
+                badge.textContent = "MEMBER (Thành viên)";
+                badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200";
+            }
+        }
+
+        async function handleCreateWorkspace(e) {
+            e.preventDefault();
+            const name = document.getElementById("ws-new-name").value.trim();
+            const description = document.getElementById("ws-new-desc").value.trim();
+            try {
+                const newWs = await api("/workspaces", "POST", { name, description });
+                closeModal("create-workspace-modal");
+                document.getElementById("ws-new-name").value = "";
+                document.getElementById("ws-new-desc").value = "";
+                localStorage.setItem("selected_workspace_id", newWs.id);
+                await loadWorkspaces();
+            } catch (err) {
+                alert("Lỗi tạo workspace: " + err.message);
+            }
+        }
+
+        // --- TASKS LOGIC ---
+        async function loadWorkspaceDetails(wsId) {
+            try {
+                // Fetch members for assignee dropdown
+                workspaceMembers = await api(`/workspaces/${wsId}/members`).catch(() => []);
+                populateAssigneeSelect();
+
+                // Fetch tasks
+                allTasks = await api(`/workspaces/${wsId}/tasks`);
+                updateStats(allTasks);
+                applyFilters();
+            } catch (err) {
+                console.error("Error loading tasks:", err);
+            }
+        }
+
+        function updateStats(tasks) {
+            const total = tasks.length;
+            const todo = tasks.filter(t => (t.status || "").toUpperCase() === "TODO").length;
+            const inProgress = tasks.filter(t => (t.status || "").toUpperCase() === "IN_PROGRESS").length;
+            const done = tasks.filter(t => (t.status || "").toUpperCase() === "DONE").length;
+
+            document.getElementById("stat-total").textContent = total;
+            document.getElementById("stat-todo").textContent = todo;
+            document.getElementById("stat-inprogress").textContent = inProgress;
+            document.getElementById("stat-done").textContent = done;
+        }
+
+        function applyFilters() {
+            const statusFilter = document.getElementById("filter-status").value;
+            const priorityFilter = document.getElementById("filter-priority").value;
+            const searchFilter = document.getElementById("filter-search").value.toLowerCase().trim();
+
+            let filtered = allTasks.filter(task => {
+                if (statusFilter && (task.status || "").toUpperCase() !== statusFilter) return false;
+                if (priorityFilter && (task.priority || "").toUpperCase() !== priorityFilter) return false;
+                if (searchFilter) {
+                    const matchTitle = (task.title || "").toLowerCase().includes(searchFilter);
+                    const matchDesc = (task.description || "").toLowerCase().includes(searchFilter);
+                    if (!matchTitle && !matchDesc) return false;
+                }
+                return true;
+            });
+
+            document.getElementById("filtered-count").textContent = `${filtered.length} công việc`;
+            renderTasks(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById("filter-status").value = "";
+            document.getElementById("filter-priority").value = "";
+            document.getElementById("filter-search").value = "";
+            applyFilters();
+        }
+
+        function renderTasks(tasks) {
+            const tbody = document.getElementById("task-table-body");
+            tbody.innerHTML = "";
+
+            if (!tasks || tasks.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-12 text-center text-slate-400">
+                            <i class="fa-regular fa-folder-open text-2xl mb-2 block"></i>
+                            <span>Chưa có công việc nào trong danh sách.</span>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tasks.forEach(task => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50/70 transition border-b border-slate-100";
+
+                // Format deadline: DD/MM/YYYY
+                let deadlineHtml = `<span class="italic text-slate-400">Chưa đặt</span>`;
+                if (task.due_date) {
+                    const d = new Date(task.due_date);
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = d.getFullYear();
+                    deadlineHtml = `
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200/90 rounded-lg text-slate-700 font-medium">
+                            <i class="fa-regular fa-calendar text-[11px] text-slate-400"></i>
+                            <span>${day}/${month}/${year}</span>
+                        </div>
+                    `;
+                }
+
+                // Priority Badge
+                let priorityClass = "bg-slate-50 text-slate-600 border-slate-200";
+                const pUpper = (task.priority || "MEDIUM").toUpperCase();
+                if (pUpper === "HIGH") priorityClass = "bg-amber-50 text-amber-600 border-amber-200";
+                else if (pUpper === "URGENT") priorityClass = "bg-rose-50 text-rose-600 border-rose-200";
+                else if (pUpper === "MEDIUM") priorityClass = "bg-indigo-50 text-indigo-600 border-indigo-200";
+                else if (pUpper === "LOW") priorityClass = "bg-slate-50 text-slate-600 border-slate-200";
+
+                // Status Dropdown Classes
+                let statusClass = "bg-slate-100 text-slate-700 border-slate-300";
+                const sUpper = (task.status || "TODO").toUpperCase();
+                if (sUpper === "DONE") statusClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                else if (sUpper === "IN_PROGRESS") statusClass = "bg-sky-50 text-sky-700 border-sky-200";
+
+                // Assignee
+                let assigneeHtml = `<span class="italic text-slate-400">Chưa giao</span>`;
+                if (task.assignee) {
+                    assigneeHtml = `<span class="font-semibold text-slate-700">${task.assignee.username}</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="py-4 px-4 font-bold text-slate-600">#${task.id}</td>
+                    <td class="py-4 px-4">
+                        <div class="font-bold text-slate-900 text-[13px]">${escapeHtml(task.title)}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(task.description || "Chưa có mô tả")}</div>
+                    </td>
+                    <td class="py-4 px-4">
+                        <select onchange="changeTaskStatus(${task.id}, this.value)" class="font-bold text-xs rounded-lg px-2.5 py-1 border outline-none cursor-pointer ${statusClass}">
+                            <option value="TODO" ${sUpper === "TODO" ? "selected" : ""}>TODO</option>
+                            <option value="IN_PROGRESS" ${sUpper === "IN_PROGRESS" ? "selected" : ""}>IN_PROGRESS</option>
+                            <option value="DONE" ${sUpper === "DONE" ? "selected" : ""}>DONE</option>
+                        </select>
+                    </td>
+                    <td class="py-4 px-4">
+                        <span class="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded border ${priorityClass}">
+                            ${pUpper}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4">${deadlineHtml}</td>
+                    <td class="py-4 px-4">${assigneeHtml}</td>
+                    <td class="py-4 px-4 text-center">
+                        <div class="inline-flex items-center gap-2">
+                            <button onclick="openEditTaskModal(${task.id})" title="Chỉnh sửa công việc" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="handleDeleteTask(${task.id})" title="Xóa công việc" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function changeTaskStatus(taskId, newStatus) {
+            try {
+                await api(`/tasks/${taskId}`, "PUT", { status: newStatus });
+                // Update local task
+                const task = allTasks.find(t => t.id === taskId);
+                if (task) task.status = newStatus;
+                updateStats(allTasks);
+                applyFilters();
+            } catch (err) {
+                alert("Lỗi khi cập nhật trạng thái: " + err.message);
+                applyFilters(); // Re-render to revert dropdown
+            }
+        }
+
+        // --- TASK MODAL ACTIONS ---
+        function populateAssigneeSelect() {
+            const select = document.getElementById("task-assignee");
+            select.innerHTML = `<option value="">-- Chưa giao --</option>`;
+            if (currentUser) {
+                select.innerHTML += `<option value="${currentUser.id}">Tôi (${currentUser.username})</option>`;
+            }
+            workspaceMembers.forEach(m => {
+                if (currentUser && m.user_id === currentUser.id) return;
+                select.innerHTML += `<option value="${m.user_id}">User ID: ${m.user_id}</option>`;
+            });
+        }
+
+        function openCreateTaskModal() {
+            document.getElementById("task-modal-title").textContent = "Tạo Công Việc Mới";
+            document.getElementById("task-id").value = "";
+            document.getElementById("task-title").value = "";
+            document.getElementById("task-desc").value = "";
+            document.getElementById("task-status").value = "TODO";
+            document.getElementById("task-priority").value = "MEDIUM";
+            document.getElementById("task-deadline").value = "";
+            document.getElementById("task-assignee").value = "";
+            openModal("task-modal");
+        }
+
+        function openEditTaskModal(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+            document.getElementById("task-modal-title").textContent = `Chỉnh Sửa Công Việc #${task.id}`;
+            document.getElementById("task-id").value = task.id;
+            document.getElementById("task-title").value = task.title || "";
+            document.getElementById("task-desc").value = task.description || "";
+            document.getElementById("task-status").value = (task.status || "TODO").toUpperCase();
+            document.getElementById("task-priority").value = (task.priority || "MEDIUM").toUpperCase();
+            
+            if (task.due_date) {
+                const dateStr = task.due_date.split("T")[0];
+                document.getElementById("task-deadline").value = dateStr;
+            } else {
+                document.getElementById("task-deadline").value = "";
+            }
+
+            document.getElementById("task-assignee").value = task.assignee_id || "";
+            openModal("task-modal");
+        }
+
+        async function handleSaveTask(e) {
+            e.preventDefault();
+            if (!currentWorkspace) return;
+
+            const taskId = document.getElementById("task-id").value;
+            const title = document.getElementById("task-title").value.trim();
+            const description = document.getElementById("task-desc").value.trim();
+            const status = document.getElementById("task-status").value;
+            const priority = document.getElementById("task-priority").value;
+            const deadlineVal = document.getElementById("task-deadline").value;
+            const assignee_id = document.getElementById("task-assignee").value || null;
+
+            const payload = {
+                title,
+                description,
+                status,
+                priority,
+                due_date: deadlineVal ? `${deadlineVal}T23:59:59` : null,
+                assignee_id
+            };
+
+            try {
+                if (taskId) {
+                    await api(`/tasks/${taskId}`, "PUT", payload);
+                } else {
+                    await api(`/workspaces/${currentWorkspace.id}/tasks`, "POST", payload);
+                }
+                closeModal("task-modal");
+                await loadWorkspaceDetails(currentWorkspace.id);
+            } catch (err) {
+                alert("Lỗi lưu task: " + err.message);
+            }
+        }
+
+        async function handleDeleteTask(taskId) {
+            if (!confirm(`Bạn có chắc muốn xóa công việc #${taskId} này không?`)) return;
+            try {
+                await api(`/tasks/${taskId}`, "DELETE");
+                await loadWorkspaceDetails(currentWorkspace.id);
+            } catch (err) {
+                alert("Lỗi khi xóa task: " + err.message);
+            }
+        }
+
+        // --- MEMBERS MODAL ---
+        async function openMembersModal() {
+            if (!currentWorkspace) return;
+            openModal("members-modal");
+            await loadMembersList();
+        }
+
+        async function loadMembersList() {
+            const listEl = document.getElementById("members-list");
+            listEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-4">Đang tải thành viên...</div>`;
+            try {
+                const members = await api(`/workspaces/${currentWorkspace.id}/members`);
+                listEl.innerHTML = "";
+                if (members.length === 0) {
+                    listEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-4">Chưa có thành viên nào khác trong Workspace.</div>`;
+                    return;
+                }
+                members.forEach(m => {
+                    const div = document.createElement("div");
+                    div.className = "flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs";
+                    div.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-user text-slate-400"></i>
+                            <span class="font-bold text-slate-700">User ID: ${m.user_id}</span>
+                            <span class="text-[10px] uppercase font-bold text-slate-400 px-2 py-0.5 rounded bg-white border border-slate-200">${m.role}</span>
+                        </div>
+                        <button onclick="handleRemoveMember('${m.user_id}')" class="text-rose-500 hover:text-rose-700 font-bold px-2 py-1">Xóa</button>
+                    `;
+                    listEl.appendChild(div);
+                });
+            } catch (err) {
+                listEl.innerHTML = `<div class="text-xs text-rose-500 text-center py-4">Lỗi: ${err.message}</div>`;
+            }
+        }
+
+        async function handleAddMember(e) {
+            e.preventDefault();
+            const userId = document.getElementById("member-user-id").value.trim();
+            try {
+                await api(`/workspaces/${currentWorkspace.id}/members`, "POST", { user_id: userId });
+                document.getElementById("member-user-id").value = "";
+                await loadMembersList();
+                await loadWorkspaceDetails(currentWorkspace.id);
+            } catch (err) {
+                alert("Lỗi thêm thành viên: " + err.message);
+            }
+        }
+
+        async function handleRemoveMember(userId) {
+            if (!confirm(`Bạn có chắc muốn xóa thành viên này khỏi Workspace?`)) return;
+            try {
+                await api(`/workspaces/${currentWorkspace.id}/members/${userId}`, "DELETE");
+                await loadMembersList();
+                await loadWorkspaceDetails(currentWorkspace.id);
+            } catch (err) {
+                alert("Lỗi xóa thành viên: " + err.message);
+            }
+        }
+
+        // --- ESCAPE HTML HELPER ---
+        function escapeHtml(str) {
+            if (!str) return "";
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize when page loads
+        window.addEventListener("DOMContentLoaded", initApp);
+    </script>
+</body>
+</html>
