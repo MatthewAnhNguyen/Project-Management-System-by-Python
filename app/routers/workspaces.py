@@ -6,11 +6,29 @@ from app.database import get_db
 from app.security import get_current_user
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces & Members"])
-
 # Gắn 5 API của Workspace (Create, Get All, Get Detail, Update, Delete) vào đây
 # Gắn 3 API của Members vào đây luôn
 # Đổi @app.post thành @router.post, đường dẫn không cần ghi /workspaces ở đầu nữa (VD: @router.post(""))
 # ... (Copy các hàm cũ sang) ...
+
+# Helper
+def log_workspace_activity(
+        workspace_id: int,
+        user_id: int,
+        action_type: str,
+        description: str,
+        db: Session
+):
+    activity = models.WorkspaceActivity(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        action_type=action_type,
+        description=description
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+    return activity
 # 1. TẠO WORKSPACE
 @router.post("", response_model=schemas.WorkspaceResponse, status_code=status.HTTP_201_CREATED)
 def create_workspace(workspace: schemas.WorkspaceCreate, db: Session = Depends(get_db),
@@ -138,6 +156,13 @@ def add_workspace_member(workspace_id: int, member_data: schemas.WorkspaceMember
     db.add(new_member)
     db.commit()
     db.refresh(new_member)
+    log_workspace_activity(
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+        action_type="MEMBER_ADDED",
+        description=f"{current_user.username} đã thêm {target_user.username} vào Workspace",
+        db=db
+    )
     return new_member
 
 
@@ -188,4 +213,67 @@ def remove_workspace_member(workspace_id: int, user_id: int, db: Session = Depen
     # Xóa khỏi DB
     db.delete(member_to_remove)
     db.commit()
+    log_workspace_activity(
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+        action_type="MEMBER_REMOVED",
+        description=f"{current_user.username} đã xóa một thành viên khỏi Workspace",
+        db=db
+    )
     return
+
+# JOIN VÀO WORKSPACE BẰNG ID
+@router.post("/{workspace_id}/join", response_model=schemas.WorkspaceMemberResponse, status_code=status.HTTP_201_CREATED)
+def join_workspace_by_id(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace không tồn tại!")
+    if workspace.owner_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Bạn chính là chủ sở hữu của Workspace này rồi")
+    member = db.query(models.WorkspaceMember).filter(
+        models.WorkspaceMember.workspace_id == workspace_id,
+        models.WorkspaceMember.user_id == current_user.id).first()
+    if member:
+        raise HTTPException(status_code=400, detail="Bạn đã là thành viên của Workspace này rồi!")
+    new_member = models.WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+        role="MEMBER"
+    )
+    db.add(new_member)
+    db.commit()
+    db.refresh(new_member)
+    log_workspace_activity(
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+        action_type="MEMBER_JOINED",
+        description=f"{current_user.username} đã tham gia vào Workspace",
+        db=db
+    )
+    return new_member
+
+# Lấy danh sách nhật ký hoạt động của Workspace
+@router.get("/{workspace_id}/activities", response_model = list[schemas.WorkspaceActivityResponse], status_code=status.HTTP_200_OK)
+def get_workspace_activities(
+        workspace_id: int,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user),
+):
+    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace không tồn tại")
+    is_member = db.query(models.WorkspaceMember).filter(
+        models.WorkspaceMember.workspace_id == workspace_id,
+        models.WorkspaceMember.user_id == current_user.id
+    ).first()
+    if workspace.owner_id != current_user.id and not is_member:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập lịch sử workspace này")
+    activities = db.query(models.WorkspaceActivity).filter(
+        models.WorkspaceActivity.workspace_id == workspace_id
+    ).order_by(models.WorkspaceActivity.created_at.desc()).all()
+    return activities
+

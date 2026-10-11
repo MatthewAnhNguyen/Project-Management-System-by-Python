@@ -133,7 +133,7 @@ def update_task(
     # Ghi nhận các trường cũ để so sánh log hoạt động
     old_status = task.status
     old_assignee_id = task.assignee_id
-
+    old_due_date = task.due_date
     # Cập nhật các trường được truyền lên
     update_dict = task_data.dict(exclude_unset=True)
     for key, value in update_dict.items():
@@ -158,6 +158,14 @@ def update_task(
             user_id=current_user.id,
             action_type="ASSIGNEE_CHANGED",
             description=f"{current_user.username} đã đổi người thực hiện thành '{assignee_name}'"
+        )
+    elif "due_date" in update_dict and update_dict["due_date"] != old_due_date:
+        log_task_activity(
+            db=db,
+            task_id=task.id,
+            user_id=current_user.id,
+            action_type="DEADLINE_CHANGED",
+            description=f"{current_user.username} đã thay đổi hạn chót của công việc"
         )
     elif update_dict:
         log_task_activity(

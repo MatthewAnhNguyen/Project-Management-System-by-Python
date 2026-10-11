@@ -133,5 +133,15 @@ class Meeting(Base):
     creator = relationship("User")
     task = relationship("Task")
 
-
+# --- BẢNG LƯU LỊCH SỬ CỦA WORKSPACE
+class WorkspaceActivity(Base):
+    __tablename__ = "workspace_activities"
+    id = Column(Integer, primary_key=True, index=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    action_type = Column(String(50), nullable=False)
+    description = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    workspace = relationship("Workspace")
+    user = relationship("User")
 
