@@ -143,17 +143,19 @@ class TaskActivityResponse(BaseModel):
 
 # --- (MỚI) SCHEMAS PHỤC VỤ GIAO DIỆN TASK UI / KANBAN / SUMMARY ---
 class KanbanBoardResponse(BaseModel):
-    workspace_id: int
+    workspace_id: str
     todo: list[TaskResponse] = []
     in_progress: list[TaskResponse] = []
+    review: list[TaskResponse] = []
     done: list[TaskResponse] = []
     cancelled: list[TaskResponse] = []
 
 class WorkspaceSummaryResponse(BaseModel):
-    workspace_id: int
+    workspace_id: str
     total_tasks: int
     todo_count: int
     in_progress_count: int
+    review_count: int = 0
     done_count: int
     cancelled_count: int
     completion_rate: float
@@ -193,10 +195,27 @@ class MeetingResponse(BaseModel):
 class WorkspaceActivityResponse(BaseModel):
     id: int
     workspace_id: int
-    user_id: int
+    user_id: Optional[int] = None
     action_type: str
     description: str
     created_at: datetime
+    user: Optional[UserSimpleResponse] = None
+
+    class Config:
+        from_attributes = True
+
+class CalendarEventResponse(BaseModel):
+    id: str
+    title: str
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    event_type: str
+
+    description: Optional[str] = None
+    meeting_link: Optional[str] = None
+    task_status: Optional[str] = None
+    task_priority: Optional[str] = None
+    assignee_name: Optional[str] = None
 
     class Config:
         from_attributes = True

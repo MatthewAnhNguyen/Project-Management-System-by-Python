@@ -1,11 +1,10 @@
-/* Custom styles for Project Management System */
-
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+/* Custom styles for ProjectManage Modern SaaS Dashboard */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
 
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     background-color: #f8fafc;
-    color: #1e293b;
+    color: #0f172a;
 }
 
 /* Custom Scrollbars */
@@ -14,33 +13,51 @@ body {
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: transparent;
 }
 ::-webkit-scrollbar-thumb {
     background: #cbd5e1;
-    border-radius: 4px;
+    border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
 
-/* Kanban Column & Card Animations */
-.kanban-card {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: grab;
-}
-.kanban-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-}
-.kanban-card:active {
-    cursor: grabbing;
-}
-
 /* Modal Overlay */
 .modal-backdrop {
-    background-color: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
+    background-color: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+}
+
+/* Task Board Card Styling */
+.task-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+}
+
+/* Priority Badges */
+.badge-urgent {
+    background-color: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fee2e2;
+}
+.badge-high {
+    background-color: #fff7ed;
+    color: #f97316;
+    border: 1px solid #ffedd5;
+}
+.badge-medium {
+    background-color: #eff6ff;
+    color: #3b82f6;
+    border: 1px solid #dbeafe;
+}
+.badge-low {
+    background-color: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #dcfce7;
 }
 
 /* FullCalendar Customizations */
@@ -49,29 +66,28 @@ body {
 }
 .fc-toolbar-title {
     font-size: 1.25rem !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     color: #0f172a;
 }
 .fc .fc-button-primary {
-    background-color: #4f46e5 !important;
-    border-color: #4f46e5 !important;
-    border-radius: 0.5rem !important;
-    font-weight: 600 !important;
+    background-color: #2563eb !important;
+    border-color: #2563eb !important;
+    border-radius: 0.75rem !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    padding: 0.4rem 0.8rem !important;
     text-transform: capitalize;
 }
 .fc .fc-button-primary:hover {
-    background-color: #4338ca !important;
-    border-color: #4338ca !important;
-}
-.fc .fc-button-primary:disabled {
-    background-color: #a5b4fc !important;
-    border-color: #a5b4fc !important;
+    background-color: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
 }
 .fc-event {
     cursor: pointer;
-    border-radius: 4px !important;
-    padding: 2px 4px !important;
-    font-weight: 500 !important;
+    border-radius: 6px !important;
+    padding: 3px 6px !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 .fc-daygrid-day:hover {

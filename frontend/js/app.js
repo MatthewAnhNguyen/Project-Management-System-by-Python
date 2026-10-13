@@ -1,20 +1,22 @@
 /**
- * Project Management System - Frontend Controller
- * Viết bằng Javascript thuần (Vanilla JS) kết nối REST API FastAPI
+ * ProjectManage - Frontend Controller (Linear/Modern SaaS Dashboard Style)
+ * Kết nối REST API FastAPI
  */
 
-// Tự động phát hiện Backend URL
 const API_BASE = (window.location.port === "8000") ? "" : "http://127.0.0.1:8000";
-// 4 biến trạng thái
-let currentWorkspaceId = null; // Lưu ID của Workspace mà người dùng đang chọn xem
-let currentTaskId = null; // Lưu ID của Task đang được mở trong cửa sổ popup (Modal)
-let currentMeetingId = null; // Lưu ID của cuộc họp đang được xem
-let calendarInstance = null; // Đối tượng lưu trữ phiên bản lịch của thư viện FullCalendar
+
+let currentWorkspaceId = null;
+let allWorkspaces = [];
+let currentWorkspaceTasks = [];
+let currentTaskId = null;
+let currentMeetingId = null;
+let calendarInstance = null;
+let activeSidebarView = "home";
 
 // ==========================================
-// 1. HELPER GỌI API & QUẢN LÝ TOKEN JWT
+// 1. QUẢN LÝ AUTHENTICATION & API CALL
 // ==========================================
-// localStorage: Bộ nhớ cục bộ của trình duyệt. Khi đăng nhập thành công, chuỗi Token JWT sẽ được cất vào đây.
+
 function getToken() {
     return localStorage.getItem("pms_token");
 }
@@ -41,40 +43,40 @@ async function apiCall(endpoint, method = "GET", body = null) {
     const headers = { "Content-Type": "application/json" };
     const token = getToken();
     if (token) {
-        headers["Authorization"] = `Bearer ${token}`; // Tự động gắn Token vào mỗi request
+        headers["Authorization"] = `Bearer ${token}`;
     }
 
     const options = { method, headers };
     if (body) {
-        options.body = JSON.stringify(body); // Ép dữ liệu js sang chuỗi JSON
+        options.body = JSON.stringify(body);
     }
 
     try {
         const response = await fetch(`${API_BASE}${endpoint}`, options);
         if (response.status === 401) {
-            alert("Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại!");
+            alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
             handleLogout();
             return null;
         }
         if (response.status === 204) {
-            return true; // Xóa thành công No Content
+            return true;
         }
         const data = await response.json();
         if (!response.ok) {
-            alert(data.detail || "Đã xảy ra lỗi, vui lòng thử lại!");
+            alert(data.detail || "Đã xảy ra lỗi, vui lòng kiểm tra lại!");
             return null;
         }
         return data;
     } catch (err) {
-        console.error("Fetch Error:", err);
-        alert("Không thể kết nối đến máy chủ Backend! Hãy chắc chắn FastAPI server đang chạy ở port 8000.");
+        console.error("API Error:", err);
+        alert("Không thể kết nối đến máy chủ FastAPI Backend! Hãy chắc chắn server đang chạy tại port 8000.");
         return null;
     }
 }
 
 
 // ==========================================
-// 2. KHỞI CHẠY ỨNG DỤNG & XÁC THỰC (AUTH)
+// 2. KHỞI CHẠY ỨNG DỤNG & AUTH FLOW
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -88,13 +90,13 @@ function checkAuthState() {
 
     if (token && user) {
         authScreen.classList.add("hidden");
-        // Hiển thị thông tin profile ở sidebar
-        document.getElementById("user-display-name").textContent = user.username || "User";
+        const displayName = user.username || "User";
+        document.getElementById("user-display-name").textContent = displayName;
+        document.getElementById("banner-username").textContent = displayName.split(" ")[0] || displayName;
         document.getElementById("user-display-email").textContent = user.email || "";
-        document.getElementById("user-avatar-initial").textContent = (user.username || "U").charAt(0).toUpperCase();
+        document.getElementById("user-avatar-initial").textContent = displayName.substring(0, 2).toUpperCase();
 
-        // Tải danh sách Workspace
-        loadWorkspaces();
+        loadAllData();
     } else {
         authScreen.classList.remove("hidden");
     }
@@ -103,37 +105,34 @@ function checkAuthState() {
 function showAuthTab(tab) {
     const loginForm = document.getElementById("login-form");
     const regForm = document.getElementById("register-form");
-    const tabLogin = document.getElementById("tab-login-btn");
-    const tabReg = document.getElementById("tab-register-btn");
+    const tabLoginBtn = document.getElementById("tab-login-btn");
+    const tabRegBtn = document.getElementById("tab-register-btn");
 
     if (tab === "login") {
         loginForm.classList.remove("hidden");
         regForm.classList.add("hidden");
-        tabLogin.className = "flex-1 pb-3 text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600";
-        tabReg.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-600";
+        tabLoginBtn.className = "flex-1 pb-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600";
+        tabRegBtn.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-600";
     } else {
         loginForm.classList.add("hidden");
         regForm.classList.remove("hidden");
-        tabReg.className = "flex-1 pb-3 text-sm font-semibold text-emerald-600 border-b-2 border-emerald-600";
-        tabLogin.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-600";
+        tabRegBtn.className = "flex-1 pb-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600";
+        tabLoginBtn.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-600";
     }
 }
 
 async function handleLogin(e) {
-    // Ngăn trình duyệt tự động load lại trang khi bấm submit form
     e.preventDefault();
     const email = document.getElementById("login-email").value.trim();
     const password = document.getElementById("login-password").value;
 
     const data = await apiCall("/auth/login", "POST", { email, password });
     if (data && data.access_token) {
-        // Tạm lưu thông tin user từ email
-        const userObj = {
-            username: email.split("@")[0],
-            email: email
-        };
-        setAuth(data.access_token, userObj);
-        checkAuthState();
+        const user = await fetchUserProfile(data.access_token);
+        if (user) {
+            setAuth(data.access_token, user);
+            checkAuthState();
+        }
     }
 }
 
@@ -143,238 +142,431 @@ async function handleRegister(e) {
     const email = document.getElementById("reg-email").value.trim();
     const password = document.getElementById("reg-password").value;
 
-    const res = await apiCall("/auth/register", "POST", { username, email, password });
-    if (res) {
-        alert("Đăng ký thành công! Hãy đăng nhập bằng tài khoản mới.");
+    const data = await apiCall("/auth/register", "POST", { username, email, password });
+    if (data) {
+        alert("Đăng ký thành công! Hãy đăng nhập.");
         showAuthTab("login");
-        document.getElementById("login-email").value = email;
     }
+}
+
+async function fetchUserProfile(token) {
+    try {
+        const res = await fetch(`${API_BASE}/users/me`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+            return await res.json();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+    return null;
 }
 
 function handleLogout() {
     clearAuth();
-    location.reload();
+    window.location.reload();
 }
 
 
 // ==========================================
-// 3. QUẢN LÝ WORKSPACE
+// 3. ĐIỀU HƯỚNG SIDEBAR VIEWS
 // ==========================================
 
-async function loadWorkspaces() {
-    const workspaces = await apiCall("/workspaces", "GET");
-    const select = document.getElementById("workspace-select");
-    select.innerHTML = "";
+function switchSidebarView(view) {
+    activeSidebarView = view;
+    const views = ["home", "calendar", "mytasks", "team", "activities"];
 
-    if (!workspaces || workspaces.length === 0) {
-        select.innerHTML = `<option value="">Chưa có Workspace nào (Hãy tạo mới)</option>`;
-        document.getElementById("current-workspace-title").textContent = "Chưa có Workspace";
-        document.getElementById("current-workspace-desc").textContent = "Bấm nút '+ Tạo mới' để bắt đầu";
-        return;
-    }
-
-    workspaces.forEach(ws => {
-        const opt = document.createElement("option");
-        opt.value = ws.id;
-        opt.textContent = ws.name;
-        select.appendChild(opt);
-    });
-
-    // Chọn workspace đầu tiên
-    currentWorkspaceId = workspaces[0].id;
-    updateWorkspaceHeader(workspaces[0]);
-    reloadCurrentView();
-}
-
-function onWorkspaceChange() {
-    const select = document.getElementById("workspace-select");
-    currentWorkspaceId = select.value;
-    const selectedText = select.options[select.selectedIndex].text;
-    document.getElementById("current-workspace-title").textContent = selectedText;
-    reloadCurrentView();
-}
-
-function updateWorkspaceHeader(ws) {
-    document.getElementById("current-workspace-title").textContent = ws.name;
-    document.getElementById("current-workspace-desc").textContent = ws.description || "Workspace quản lý dự án";
-}
-
-async function handleCreateWorkspace(e) {
-    e.preventDefault();
-    const name = document.getElementById("ws-name").value.trim();
-    const description = document.getElementById("ws-desc").value.trim();
-
-    const newWs = await apiCall("/workspaces", "POST", { name, description });
-    if (newWs) {
-        closeModal("create-workspace-modal");
-        document.getElementById("ws-name").value = "";
-        document.getElementById("ws-desc").value = "";
-        await loadWorkspaces();
-        // Chuyển sang workspace mới tạo
-        document.getElementById("workspace-select").value = newWs.id;
-        currentWorkspaceId = newWs.id;
-        updateWorkspaceHeader(newWs);
-        reloadCurrentView();
-    }
-}
-
-
-// ==========================================
-// 4. CHUYỂN TAB & ĐIỀU HƯỚNG GIAO DIỆN
-// ==========================================
-
-let activeTab = "kanban";
-
-function switchTab(tab) {
-    activeTab = tab;
-    const tabs = ["kanban", "calendar", "summary", "members"];
-    
-    tabs.forEach(t => {
-        const sec = document.getElementById(`tab-${t}`);
-        const btn = document.getElementById(`nav-${t}`);
-        if (t === tab) {
-            sec.classList.remove("hidden");
-            btn.className = "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-indigo-600 bg-indigo-50/80 transition";
-            btn.querySelector("i").className = btn.querySelector("i").className.replace("text-slate-400", "text-indigo-600");
-        } else {
-            sec.classList.add("hidden");
-            btn.className = "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition";
-            btn.querySelector("i").className = btn.querySelector("i").className.replace("text-indigo-600", "text-slate-400");
+    views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        const btn = document.getElementById(`nav-${v}`);
+        if (el) el.classList.add("hidden");
+        if (btn) {
+            btn.className = "w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition";
         }
     });
 
-    reloadCurrentView();
-}
+    const activeEl = document.getElementById(`view-${view}`);
+    const activeBtn = document.getElementById(`nav-${view}`);
+    if (activeEl) activeEl.classList.remove("hidden");
+    if (activeBtn) {
+        activeBtn.className = "w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-blue-50 text-blue-600 transition";
+    }
 
-function reloadCurrentView() {
-    if (!currentWorkspaceId) return;
-
-    if (activeTab === "kanban") {
-        loadKanbanBoard();
-    } else if (activeTab === "calendar") {
+    if (view === "home") {
+        loadWorkspaceDetails();
+    } else if (view === "calendar") {
         initOrRefreshCalendar();
-    } else if (activeTab === "summary") {
-        loadSummary();
-    } else if (activeTab === "members") {
+    } else if (view === "mytasks") {
+        loadMyTasks();
+    } else if (view === "team") {
         loadMembers();
+    } else if (view === "activities") {
+        loadFullActivities();
     }
 }
 
 
 // ==========================================
-// 5. BẢNG KANBAN BOARD (TASK UI - NGƯỜI 3)
+// 4. QUẢN LÝ DỮ LIỆU WORKSPACE & DASHBOARD
 // ==========================================
 
-async function loadKanbanBoard() {
-    if (!currentWorkspaceId) return;
-
-    const data = await apiCall(`/workspaces/${currentWorkspaceId}/kanban`, "GET");
-    if (!data) return;
-
-    // Cập nhật số lượng badge
-    document.getElementById("badge-todo-count").textContent = data.todo.length;
-    document.getElementById("badge-inprogress-count").textContent = data.in_progress.length;
-    document.getElementById("badge-done-count").textContent = data.done.length;
-    document.getElementById("badge-cancelled-count").textContent = data.cancelled.length;
-
-    // Render từng cột
-    renderKanbanColumn("col-todo", data.todo, "TODO");
-    renderKanbanColumn("col-in-progress", data.in_progress, "IN_PROGRESS");
-    renderKanbanColumn("col-done", data.done, "DONE");
-    renderKanbanColumn("col-cancelled", data.cancelled, "CANCELLED");
+async function loadAllData() {
+    await loadWorkspaces();
+    loadMyTasksCount();
 }
 
-function renderKanbanColumn(containerId, tasks, status) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = "";
+async function loadWorkspaces() {
+    const workspaces = await apiCall("/workspaces", "GET");
+    allWorkspaces = workspaces || [];
 
-    if (tasks.length === 0) {
-        container.innerHTML = `
-            <div class="h-28 border-2 border-dashed border-slate-300/60 rounded-xl flex items-center justify-center text-xs font-semibold text-slate-400">
-                Chưa có task nào
-            </div>
-        `;
+    // KPI Total Projects
+    document.getElementById("kpi-total-projects").textContent = allWorkspaces.length;
+
+    if (allWorkspaces.length === 0) {
+        renderProjectCards([]);
+        document.getElementById("current-board-project-name").textContent = "Chưa có dự án nào";
         return;
     }
 
-    tasks.forEach(task => {
+    if (!currentWorkspaceId || !allWorkspaces.some(w => String(w.id) === String(currentWorkspaceId))) {
+        currentWorkspaceId = allWorkspaces[0].id;
+    }
+
+    renderProjectCards(allWorkspaces);
+    renderProjectDropdownMenu(allWorkspaces);
+    loadWorkspaceDetails();
+}
+
+function renderProjectCards(workspaces) {
+    const container = document.getElementById("projects-grid-container");
+    container.innerHTML = "";
+
+    const cardStyles = [
+        { bg: "bg-purple-50", text: "text-purple-600", tagBg: "bg-purple-100 text-purple-700", tag: "Backend", icon: "fa-solid fa-shapes" },
+        { bg: "bg-emerald-50", text: "text-emerald-600", tagBg: "bg-emerald-100 text-emerald-700", tag: "Full Stack", icon: "fa-solid fa-layer-group" },
+        { bg: "bg-rose-50", text: "text-rose-600", tagBg: "bg-rose-100 text-rose-700", tag: "Frontend", icon: "fa-solid fa-mobile-screen-button" },
+        { bg: "bg-amber-50", text: "text-amber-600", tagBg: "bg-amber-100 text-amber-700", tag: "Frontend", icon: "fa-solid fa-images" },
+        { bg: "bg-sky-50", text: "text-sky-600", tagBg: "bg-sky-100 text-sky-700", tag: "Frontend", icon: "fa-solid fa-globe" }
+    ];
+
+    workspaces.forEach((ws, idx) => {
+        const style = cardStyles[idx % cardStyles.length];
+        const isSelected = String(ws.id) === String(currentWorkspaceId);
+
         const card = document.createElement("div");
-        card.className = "kanban-card bg-white p-4 rounded-xl shadow-sm border border-slate-200/80 hover:border-indigo-200";
-
-        // Màu thẻ độ ưu tiên
-        const priorityColors = {
-            "LOW": "bg-slate-100 text-slate-600",
-            "MEDIUM": "bg-blue-50 text-blue-600",
-            "HIGH": "bg-amber-50 text-amber-600",
-            "URGENT": "bg-rose-50 text-rose-600"
-        };
-        const pClass = priorityColors[task.priority] || priorityColors["MEDIUM"];
-
-        // Format ngày hạn chót
-        const dueText = task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : null;
+        card.className = `bg-white p-4 rounded-2xl border transition cursor-pointer hover:shadow-md space-y-3.5 ${
+            isSelected ? 'border-blue-500 ring-2 ring-blue-500/10' : 'border-slate-200/80'
+        }`;
+        card.onclick = () => selectWorkspace(ws.id);
 
         card.innerHTML = `
-            <div class="flex items-start justify-between gap-2 mb-2">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${pClass}">${task.priority}</span>
-                <select onchange="handleQuickStatusChange(${task.id}, this.value)" class="text-[11px] font-semibold bg-slate-100 text-slate-700 rounded-lg px-2 py-0.5 border border-slate-200 focus:outline-none">
-                    <option value="TODO" ${task.status === "TODO" ? "selected" : ""}>TODO</option>
-                    <option value="IN_PROGRESS" ${task.status === "IN_PROGRESS" ? "selected" : ""}>IN_PROGRESS</option>
-                    <option value="DONE" ${task.status === "DONE" ? "selected" : ""}>DONE</option>
-                    <option value="CANCELLED" ${task.status === "CANCELLED" ? "selected" : ""}>CANCELLED</option>
-                </select>
-            </div>
-            <h4 onclick="openTaskDetail(${task.id})" class="font-bold text-sm text-slate-800 hover:text-indigo-600 cursor-pointer mb-1 leading-snug">${task.title}</h4>
-            <p class="text-xs text-slate-500 line-clamp-2 mb-3">${task.description || "Không có mô tả"}</p>
-            <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-                <div class="flex items-center gap-1.5">
-                    <i class="fa-regular fa-clock"></i>
-                    <span>${dueText || "Không hạn"}</span>
+            <div class="flex items-center justify-between">
+                <div class="w-9 h-9 rounded-xl ${style.bg} ${style.text} flex items-center justify-center text-sm font-bold">
+                    <i class="${style.icon}"></i>
                 </div>
-                <div class="flex items-center gap-1 text-slate-600 font-medium">
-                    <i class="fa-regular fa-user text-slate-400"></i>
-                    <span>${task.assignee ? task.assignee.username : "Chưa gán"}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${style.tagBg}">${style.tag}</span>
+            </div>
+            <div>
+                <h4 class="font-extrabold text-sm text-slate-900 truncate leading-snug">${ws.name}</h4>
+                <div class="flex items-center gap-2 mt-2">
+                    <div class="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-600 h-full rounded-full" style="width: 50%"></div>
+                    </div>
+                    <span class="text-[11px] font-bold text-slate-400">50%</span>
                 </div>
             </div>
+            <p class="text-[11px] text-slate-400 font-medium pt-1 border-t border-slate-100 truncate">
+                ID: #${ws.id} • ${ws.description || 'Dự án đang triển khai'}
+            </p>
         `;
         container.appendChild(card);
     });
 }
 
-async function handleQuickStatusChange(taskId, newStatus) {
-    const res = await apiCall(`/tasks/${taskId}`, "PUT", { status: newStatus });
-    if (res) {
-        loadKanbanBoard();
-    }
+function renderProjectDropdownMenu(workspaces) {
+    const list = document.getElementById("project-dropdown-list");
+    list.innerHTML = "";
+
+    workspaces.forEach(ws => {
+        const item = document.createElement("button");
+        item.className = `w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+            String(ws.id) === String(currentWorkspaceId) ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+        }`;
+        item.onclick = () => {
+            selectWorkspace(ws.id);
+            toggleProjectSelectMenu();
+        };
+        item.innerHTML = `
+            <span class="truncate">${ws.name}</span>
+            <span class="text-[10px] text-slate-400 font-mono">#${ws.id}</span>
+        `;
+        list.appendChild(item);
+    });
 }
 
-async function handleCreateTask(e) {
-    e.preventDefault();
+function toggleProjectSelectMenu() {
+    const menu = document.getElementById("project-dropdown-menu");
+    menu.classList.toggle("hidden");
+}
+
+function selectWorkspace(wsId) {
+    currentWorkspaceId = wsId;
+    renderProjectCards(allWorkspaces);
+    renderProjectDropdownMenu(allWorkspaces);
+    loadWorkspaceDetails();
+}
+
+async function loadWorkspaceDetails() {
     if (!currentWorkspaceId) return;
 
-    const title = document.getElementById("task-title").value.trim();
-    const description = document.getElementById("task-desc").value.trim();
-    const priority = document.getElementById("task-priority").value;
-    const dueDateVal = document.getElementById("task-due-date").value;
-    const dueDate = dueDateVal ? new Date(dueDateVal).toISOString() : null;
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    if (currentWs) {
+        document.getElementById("current-board-project-name").textContent = currentWs.name;
+    }
 
-    const res = await apiCall(`/workspaces/${currentWorkspaceId}/tasks`, "POST", {
-        title,
-        description,
-        priority,
-        due_date: dueDate
-    });
+    // 1. Tải Summary Stats
+    const summary = await apiCall(`/workspaces/${currentWorkspaceId}/summary`, "GET");
+    if (summary) {
+        document.getElementById("kpi-total-tasks").textContent = summary.total_tasks || 0;
+        document.getElementById("kpi-overdue-tasks").textContent = summary.todo_count || 0;
 
-    if (res) {
-        closeModal("create-task-modal");
-        document.getElementById("task-title").value = "";
-        document.getElementById("task-desc").value = "";
-        loadKanbanBoard();
+        // Cập nhật Donut Chart Widget
+        updateDonutChart(summary);
+    }
+
+    // 2. Tải Team Members Count
+    const members = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "GET");
+    if (members) {
+        document.getElementById("kpi-team-members").textContent = members.length || 0;
+    }
+
+    // 3. Tải Tasks của Project
+    const tasks = await apiCall(`/workspaces/${currentWorkspaceId}/tasks`, "GET");
+    currentWorkspaceTasks = tasks || [];
+    renderKanbanColumns(currentWorkspaceTasks);
+    renderUpcomingDeadlinesWidget(currentWorkspaceTasks);
+
+    // 4. Tải Recent Activities
+    loadRecentActivitiesWidget();
+}
+
+function updateDonutChart(summary) {
+    const total = summary.total_tasks || 0;
+    const done = summary.done_count || 0;
+    const inProgress = summary.in_progress_count || 0;
+    const todo = summary.todo_count || 0;
+
+    document.getElementById("progress-donut-count").textContent = total;
+
+    const donePct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const inProgressPct = total > 0 ? Math.round((inProgress / total) * 100) : 0;
+    const todoPct = total > 0 ? Math.round((todo / total) * 100) : 0;
+
+    document.getElementById("legend-done-stat").textContent = `${done} (${donePct}%)`;
+    document.getElementById("legend-inprogress-stat").textContent = `${inProgress} (${inProgressPct}%)`;
+    document.getElementById("legend-todo-stat").textContent = `${todo} (${todoPct}%)`;
+
+    // SVG dasharray: chu vi là ~97.4 (2 * PI * 15.5)
+    const circleDone = document.getElementById("progress-circle-done");
+    const circleInProg = document.getElementById("progress-circle-inprogress");
+
+    if (circleDone && circleInProg) {
+        circleDone.setAttribute("stroke-dasharray", `${donePct}, 100`);
+        circleInProg.setAttribute("stroke-dasharray", `${inProgressPct}, 100`);
+        circleInProg.setAttribute("stroke-dashoffset", `-${donePct}`);
     }
 }
 
 
 // ==========================================
-// 6. TASK DETAIL & COLLABORATION (COMMENTS + TIMELINE)
+// 5. KANBAN TASK BOARD (KHỚP HOÀN TOÀN MOCKUP)
+// ==========================================
+
+function renderKanbanColumns(tasks) {
+    const colTodo = document.getElementById("col-todo-tasks");
+    const colInProg = document.getElementById("col-inprogress-tasks");
+    const colReview = document.getElementById("col-review-tasks");
+    const colDone = document.getElementById("col-done-tasks");
+
+    colTodo.innerHTML = "";
+    colInProg.innerHTML = "";
+    colReview.innerHTML = "";
+    colDone.innerHTML = "";
+
+    const todoList = tasks.filter(t => t.status === "TODO");
+    const inProgList = tasks.filter(t => t.status === "IN_PROGRESS");
+    const doneList = tasks.filter(t => t.status === "DONE");
+    const reviewList = tasks.filter(t => t.status === "CANCELLED" || t.status === "REVIEW");
+
+    document.getElementById("badge-todo").textContent = todoList.length;
+    document.getElementById("badge-inprogress").textContent = inProgList.length;
+    document.getElementById("badge-review").textContent = reviewList.length;
+    document.getElementById("badge-done").textContent = doneList.length;
+
+    todoList.forEach(t => colTodo.appendChild(createTaskCardElement(t)));
+    inProgList.forEach(t => colInProg.appendChild(createTaskCardElement(t)));
+    reviewList.forEach(t => colReview.appendChild(createTaskCardElement(t)));
+    doneList.forEach(t => colDone.appendChild(createTaskCardElement(t)));
+}
+
+function createTaskCardElement(task) {
+    const card = document.createElement("div");
+    card.className = "task-card bg-white p-3.5 rounded-2xl border border-slate-200/70 shadow-sm space-y-2.5 cursor-pointer";
+    card.onclick = () => openTaskDetail(task.id);
+
+    // Priority badge
+    let priorityClass = "badge-low";
+    let priorityDot = "bg-emerald-500";
+    if (task.priority === "HIGH") {
+        priorityClass = "badge-high";
+        priorityDot = "bg-orange-500";
+    } else if (task.priority === "URGENT") {
+        priorityClass = "badge-urgent";
+        priorityDot = "bg-rose-500";
+    } else if (task.priority === "MEDIUM") {
+        priorityClass = "badge-medium";
+        priorityDot = "bg-blue-500";
+    }
+
+    // Date
+    let dateStr = "No date";
+    if (task.due_date) {
+        const d = new Date(task.due_date);
+        dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // Assignee
+    const assigneeInitial = (task.assignee && task.assignee.username)
+        ? task.assignee.username.substring(0, 1).toUpperCase()
+        : "?";
+
+    card.innerHTML = `
+        <h5 class="font-bold text-xs text-slate-800 leading-snug line-clamp-2">${task.title}</h5>
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Backend</span>
+            <span class="${priorityClass} text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span class="w-1 h-1 rounded-full ${priorityDot}"></span> ${task.priority}
+            </span>
+        </div>
+        <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400 font-medium">
+            <span>${dateStr}</span>
+            <div class="w-5 h-5 rounded-full bg-slate-800 text-white font-bold text-[9px] flex items-center justify-center">
+                ${assigneeInitial}
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+function filterBoardTasks(keyword) {
+    const q = keyword.toLowerCase().trim();
+    if (!q) {
+        renderKanbanColumns(currentWorkspaceTasks);
+        return;
+    }
+    const filtered = currentWorkspaceTasks.filter(t => 
+        (t.title && t.title.toLowerCase().includes(q)) ||
+        (t.description && t.description.toLowerCase().includes(q))
+    );
+    renderKanbanColumns(filtered);
+}
+
+function handleGlobalSearch(keyword) {
+    filterBoardTasks(keyword);
+}
+
+
+// ==========================================
+// 6. RIGHT SIDEBAR WIDGETS
+// ==========================================
+
+async function loadRecentActivitiesWidget() {
+    if (!currentWorkspaceId) return;
+    const activities = await apiCall(`/workspaces/${currentWorkspaceId}/activities`, "GET");
+    const container = document.getElementById("recent-activity-list");
+    container.innerHTML = "";
+
+    if (!activities || activities.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-2">No recent activity.</p>`;
+        return;
+    }
+
+    // Top 5 items
+    activities.slice(0, 5).forEach(act => {
+        const item = document.createElement("div");
+        item.className = "flex items-start gap-3";
+        const timeStr = formatRelativeTime(act.created_at);
+        const initial = (act.user && act.user.username) ? act.user.username.charAt(0).toUpperCase() : 'U';
+
+        item.innerHTML = `
+            <div class="w-7 h-7 rounded-full bg-slate-700 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
+                ${initial}
+            </div>
+            <div class="flex-1 leading-snug">
+                <p class="text-xs text-slate-800 font-medium">
+                    ${act.description}
+                </p>
+                <span class="text-[10px] text-slate-400">${timeStr}</span>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function renderUpcomingDeadlinesWidget(tasks) {
+    const container = document.getElementById("upcoming-deadlines-list");
+    container.innerHTML = "";
+
+    const tasksWithDeadline = tasks.filter(t => t.due_date).slice(0, 4);
+    if (tasksWithDeadline.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-2">No upcoming deadlines.</p>`;
+        return;
+    }
+
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const wsName = currentWs ? currentWs.name : "Project";
+
+    tasksWithDeadline.forEach(t => {
+        const d = new Date(t.due_date);
+        const monthStr = d.toLocaleDateString('en-US', { month: 'short' });
+        const dayStr = d.getDate();
+
+        const item = document.createElement("div");
+        item.className = "flex items-center gap-3.5 cursor-pointer hover:bg-slate-50 p-1.5 rounded-xl transition";
+        item.onclick = () => openTaskDetail(t.id);
+
+        item.innerHTML = `
+            <div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex flex-col items-center justify-center text-center shrink-0">
+                <span class="text-[8px] font-black uppercase text-rose-500 leading-none">${monthStr}</span>
+                <span class="text-xs font-black text-rose-600 leading-none mt-0.5">${dayStr}</span>
+            </div>
+            <div class="flex-1 truncate">
+                <h5 class="text-xs font-bold text-slate-800 truncate">${t.title}</h5>
+                <p class="text-[10px] text-slate-400 truncate">${wsName}</p>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function formatRelativeTime(dateStr) {
+    if (!dateStr) return "vừa xong";
+    const now = new Date();
+    const past = new Date(dateStr);
+    const diffMin = Math.round((now - past) / 60000);
+
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.round(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays}d ago`;
+}
+
+
+// ==========================================
+// 7. TASK DETAIL MODAL (COMMENTS & AUDIT LOG)
 // ==========================================
 
 async function openTaskDetail(taskId) {
@@ -382,18 +574,25 @@ async function openTaskDetail(taskId) {
     const task = await apiCall(`/tasks/${taskId}`, "GET");
     if (!task) return;
 
+    document.getElementById("modal-task-id").textContent = `#${task.id}`;
     document.getElementById("modal-task-title").textContent = task.title;
-    document.getElementById("modal-task-desc").textContent = task.description || "Không có mô tả chi tiết";
-    document.getElementById("modal-task-priority").textContent = task.priority;
+    document.getElementById("modal-task-desc").textContent = task.description || "No description provided.";
     document.getElementById("modal-task-status").textContent = task.status;
-    document.getElementById("modal-task-due").textContent = task.due_date ? new Date(task.due_date).toLocaleString('vi-VN') : "Không có";
-    document.getElementById("modal-task-assignee").textContent = task.assignee ? task.assignee.username : "Chưa gán";
+    document.getElementById("modal-task-priority").textContent = task.priority;
 
-    // Mặc định tab Bình luận
+    if (task.due_date) {
+        document.getElementById("modal-task-due").textContent = new Date(task.due_date).toLocaleString('vi-VN');
+    } else {
+        document.getElementById("modal-task-due").textContent = "Chưa đặt";
+    }
+
+    document.getElementById("modal-task-assignee").textContent = (task.assignee && task.assignee.username)
+        ? task.assignee.username
+        : "Chưa gán";
+
     switchTaskDetailTab("comments");
     loadTaskComments(taskId);
     loadTaskActivities(taskId);
-
     openModal("task-detail-modal");
 }
 
@@ -408,13 +607,13 @@ function switchTaskDetailTab(subTab) {
         commentsPanel.classList.remove("hidden");
         activitiesPanel.classList.add("hidden");
         commentInput.classList.remove("hidden");
-        commentsBtn.className = "py-3 px-4 text-xs font-bold text-indigo-600 border-b-2 border-indigo-600";
+        commentsBtn.className = "py-3 px-4 text-xs font-bold text-blue-600 border-b-2 border-blue-600";
         activitiesBtn.className = "py-3 px-4 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600";
     } else {
         commentsPanel.classList.add("hidden");
         activitiesPanel.classList.remove("hidden");
         commentInput.classList.add("hidden");
-        activitiesBtn.className = "py-3 px-4 text-xs font-bold text-indigo-600 border-b-2 border-indigo-600";
+        activitiesBtn.className = "py-3 px-4 text-xs font-bold text-blue-600 border-b-2 border-blue-600";
         commentsBtn.className = "py-3 px-4 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600";
     }
 }
@@ -425,12 +624,7 @@ async function loadTaskComments(taskId) {
     container.innerHTML = "";
 
     if (!comments || comments.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-8 text-xs text-slate-400">
-                <i class="fa-regular fa-comment-dots text-3xl mb-2 text-slate-300"></i>
-                <p>Chưa có bình luận nào. Hãy bắt đầu cuộc trò chuyện!</p>
-            </div>
-        `;
+        container.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center">Chưa có bình luận nào.</p>`;
         return;
     }
 
@@ -440,10 +634,10 @@ async function loadTaskComments(taskId) {
         const item = document.createElement("div");
         item.className = "flex gap-3 text-sm";
         const dateStr = new Date(c.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
-        const isMyComment = currentUser && c.user && currentUser.email === c.user.email;
+        const isMyComment = currentUser && (String(currentUser.id) === String(c.user_id));
 
         item.innerHTML = `
-            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center shrink-0 text-xs">
+            <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
                 ${(c.user ? c.user.username : "U").charAt(0).toUpperCase()}
             </div>
             <div class="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-3">
@@ -452,7 +646,7 @@ async function loadTaskComments(taskId) {
                     <div class="flex items-center gap-2">
                         <span class="text-[11px] text-slate-400">${dateStr}</span>
                         ${isMyComment ? `
-                            <button onclick="handleDeleteComment(${c.id})" class="text-slate-400 hover:text-rose-600" title="Xóa bình luận">
+                            <button onclick="handleDeleteComment('${c.id}')" class="text-slate-400 hover:text-rose-600">
                                 <i class="fa-regular fa-trash-can text-xs"></i>
                             </button>
                         ` : ''}
@@ -474,12 +668,12 @@ async function handleSendComment() {
     if (res) {
         input.value = "";
         loadTaskComments(currentTaskId);
-        loadTaskActivities(currentTaskId); // Hoạt động mới sẽ tự động sinh ra
+        loadTaskActivities(currentTaskId);
     }
 }
 
 async function handleDeleteComment(commentId) {
-    if (!confirm("Bạn có chắc chắn muốn xóa bình luận này?")) return;
+    if (!confirm("Bạn có chắc muốn xóa bình luận này?")) return;
     const res = await apiCall(`/comments/${commentId}`, "DELETE");
     if (res) {
         loadTaskComments(currentTaskId);
@@ -500,7 +694,7 @@ async function loadTaskActivities(taskId) {
     activities.forEach(a => {
         const item = document.createElement("div");
         item.className = "flex items-start gap-3 text-xs";
-        const timeStr = new Date(a.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+        const timeStr = new Date(a.created_at).toLocaleString('vi-VN');
 
         item.innerHTML = `
             <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -517,7 +711,69 @@ async function loadTaskActivities(taskId) {
 
 
 // ==========================================
-// 7. LỊCH HỌP FULLCALENDAR (GOOGLE CALENDAR STYLE)
+// 8. TẠO TASK, WORKSPACE, CUỘC HỌP
+// ==========================================
+
+async function handleCreateTask(e) {
+    e.preventDefault();
+    if (!currentWorkspaceId) return;
+
+    const title = document.getElementById("task-title").value.trim();
+    const description = document.getElementById("task-desc").value.trim();
+    const priority = document.getElementById("task-priority").value;
+    const dueVal = document.getElementById("task-due-date").value;
+
+    const payload = {
+        title,
+        description: description || null,
+        priority,
+        status: "TODO",
+        due_date: dueVal ? new Date(dueVal).toISOString() : null
+    };
+
+    const res = await apiCall(`/workspaces/${currentWorkspaceId}/tasks`, "POST", payload);
+    if (res) {
+        closeModal("create-task-modal");
+        document.getElementById("task-title").value = "";
+        document.getElementById("task-desc").value = "";
+        document.getElementById("task-due-date").value = "";
+        loadWorkspaceDetails();
+    }
+}
+
+async function handleCreateWorkspace(e) {
+    e.preventDefault();
+    const name = document.getElementById("ws-name").value.trim();
+    const description = document.getElementById("ws-desc").value.trim();
+
+    const res = await apiCall("/workspaces", "POST", { name, description });
+    if (res) {
+        closeModal("create-workspace-modal");
+        document.getElementById("ws-name").value = "";
+        document.getElementById("ws-desc").value = "";
+        currentWorkspaceId = res.id;
+        loadWorkspaces();
+    }
+}
+
+async function handleJoinWorkspace(e) {
+    e.preventDefault();
+    const wsId = document.getElementById("join-ws-id").value.trim();
+    if (!wsId) return;
+
+    const res = await apiCall(`/workspaces/${wsId}/join`, "POST");
+    if (res) {
+        alert("Tham gia Workspace thành công!");
+        closeModal("join-workspace-modal");
+        document.getElementById("join-ws-id").value = "";
+        currentWorkspaceId = wsId;
+        loadWorkspaces();
+    }
+}
+
+
+// ==========================================
+// 9. LỊCH FULLCALENDAR & MY TASKS
 // ==========================================
 
 function initOrRefreshCalendar() {
@@ -538,34 +794,41 @@ function initOrRefreshCalendar() {
                 week: 'Tuần',
                 day: 'Ngày'
             },
+            dateClick: function(info) {
+                document.getElementById("meet-start").value = `${info.dateStr}T09:00`;
+                document.getElementById("meet-end").value = `${info.dateStr}T10:00`;
+                openModal("create-meeting-modal");
+            },
             events: async function(info, successCallback, failureCallback) {
                 if (!currentWorkspaceId) {
                     successCallback([]);
                     return;
                 }
-                const url = `/workspaces/${currentWorkspaceId}/meetings?from_date=${info.startStr}&to_date=${info.endStr}`;
-                const meetings = await apiCall(url, "GET");
-                if (meetings) {
-                    const events = meetings.map(m => ({
-                        id: m.id,
-                        title: m.title,
-                        start: m.start_time,
-                        end: m.end_time,
-                        backgroundColor: '#10b981',
-                        borderColor: '#059669',
-                        extendedProps: {
-                            description: m.description,
-                            creator: m.creator ? m.creator.username : "Owner",
-                            meeting_link: m.meeting_link
-                        }
+                const url = `/workspaces/${currentWorkspaceId}/calendar-events?from_date=${info.startStr}&to_date=${info.endStr}`;
+                const eventsData = await apiCall(url, "GET");
+                if (eventsData) {
+                    const fcEvents = eventsData.map(e => ({
+                        id: e.id,
+                        title: e.title,
+                        start: e.start_time,
+                        end: e.end_time || e.start_time,
+                        backgroundColor: e.event_type === 'MEETING' ? '#10b981' : '#2563eb',
+                        borderColor: e.event_type === 'MEETING' ? '#059669' : '#1d4ed8',
+                        extendedProps: e
                     }));
-                    successCallback(events);
+                    successCallback(fcEvents);
                 } else {
                     failureCallback();
                 }
             },
             eventClick: function(info) {
-                openMeetingDetail(info.event);
+                const props = info.event.extendedProps;
+                if (props.event_type === 'MEETING') {
+                    openMeetingDetail(info.event);
+                } else {
+                    const taskId = props.id.replace('task-', '');
+                    openTaskDetail(taskId);
+                }
             }
         });
         calendarInstance.render();
@@ -575,17 +838,20 @@ function initOrRefreshCalendar() {
 }
 
 function openMeetingDetail(event) {
-    currentMeetingId = event.id;
-    document.getElementById("md-title").textContent = event.title;
-    document.getElementById("md-desc").textContent = event.extendedProps.description || "Không có mô tả cuộc họp";
-    document.getElementById("md-creator").textContent = event.extendedProps.creator;
-    
+    const rawId = event.id.replace('meeting-', '');
+    currentMeetingId = rawId;
+    const props = event.extendedProps;
+
+    document.getElementById("md-title").textContent = event.title.replace('📅 [Họp] ', '');
+    document.getElementById("md-desc").textContent = props.description || "Không có nội dung mô tả.";
+    document.getElementById("md-creator").textContent = props.creator ? props.creator.username : "Owner";
+
     const startStr = new Date(event.start).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
     const endStr = new Date(event.end).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     document.getElementById("md-time").textContent = `${startStr} - ${endStr}`;
 
     const joinBtn = document.getElementById("md-join-btn");
-    joinBtn.href = event.extendedProps.meeting_link || "#";
+    joinBtn.href = props.meeting_link || "#";
 
     openModal("meeting-detail-modal");
 }
@@ -601,13 +867,13 @@ async function handleCreateMeeting(e) {
     const meetingLink = document.getElementById("meet-link").value.trim();
 
     if (new Date(startVal) >= new Date(endVal)) {
-        alert("Thời gian kết thúc phải diễn ra sau thời gian bắt đầu!");
+        alert("Thời gian kết thúc cuộc họp phải diễn ra sau thời gian bắt đầu!");
         return;
     }
 
     const payload = {
         title,
-        description,
+        description: description || null,
         start_time: new Date(startVal).toISOString(),
         end_time: new Date(endVal).toISOString(),
         meeting_link: meetingLink || null
@@ -634,39 +900,50 @@ async function handleDeleteMeeting() {
     }
 }
 
+async function loadMyTasks() {
+    const tasks = await apiCall("/tasks/me", "GET");
+    const container = document.getElementById("my-tasks-list");
+    container.innerHTML = "";
 
-// ==========================================
-// 8. DASHBOARD THỐNG KÊ (SUMMARY - NGƯỜI 3)
-// ==========================================
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `<p class="p-6 text-sm text-slate-400 text-center">Bạn chưa được phân công công việc nào.</p>`;
+        return;
+    }
 
-async function loadSummary() {
-    if (!currentWorkspaceId) return;
+    tasks.forEach(t => {
+        const item = document.createElement("div");
+        item.className = "p-4 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer";
+        item.onclick = () => openTaskDetail(t.id);
 
-    const data = await apiCall(`/workspaces/${currentWorkspaceId}/summary`, "GET");
-    if (!data) return;
-
-    document.getElementById("summary-rate").textContent = `${data.completion_rate}%`;
-    document.getElementById("summary-progress-bar").style.width = `${data.completion_rate}%`;
-    document.getElementById("sum-total").textContent = data.total_tasks;
-    document.getElementById("sum-todo").textContent = data.todo_count;
-    document.getElementById("sum-in-progress").textContent = data.in_progress_count;
-    document.getElementById("sum-done").textContent = data.done_count;
+        item.innerHTML = `
+            <div>
+                <h5 class="text-sm font-bold text-slate-900">${t.title}</h5>
+                <p class="text-xs text-slate-400 mt-0.5">Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleDateString('vi-VN') : 'Không hạn'}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">${t.status}</span>
+            </div>
+        `;
+        container.appendChild(item);
+    });
 }
 
-
-// ==========================================
-// 9. QUẢN LÝ THÀNH VIÊN (MEMBERS)
-// ==========================================
+async function loadMyTasksCount() {
+    const tasks = await apiCall("/tasks/me", "GET");
+    const countBadge = document.getElementById("badge-my-tasks-count");
+    if (countBadge && tasks) {
+        countBadge.textContent = tasks.length;
+    }
+}
 
 async function loadMembers() {
     if (!currentWorkspaceId) return;
-
     const members = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "GET");
     const container = document.getElementById("members-list");
     container.innerHTML = "";
 
     if (!members || members.length === 0) {
-        container.innerHTML = `<p class="p-6 text-sm text-slate-400 text-center">Chưa có thành viên nào được thêm vào Workspace này.</p>`;
+        container.innerHTML = `<p class="p-6 text-sm text-slate-400 text-center">Chưa có thành viên nào.</p>`;
         return;
     }
 
@@ -677,17 +954,17 @@ async function loadMembers() {
 
         item.innerHTML = `
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs">
+                <div class="w-8 h-8 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-xs">
                     #${m.user_id}
                 </div>
                 <div>
                     <p class="text-sm font-bold text-slate-800">User ID: ${m.user_id}</p>
-                    <p class="text-xs text-slate-400">Tham gia ngày: ${dateStr}</p>
+                    <p class="text-xs text-slate-400">Tham gia: ${dateStr}</p>
                 </div>
             </div>
             <div class="flex items-center gap-3">
                 <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">${m.role}</span>
-                <button onclick="handleRemoveMember(${m.user_id})" class="text-rose-600 hover:text-rose-800 text-xs font-semibold py-1 px-2.5 rounded-lg hover:bg-rose-50 transition">Xóa</button>
+                <button onclick="handleRemoveMember('${m.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-semibold py-1 px-2 rounded-lg hover:bg-rose-50 transition">Xóa</button>
             </div>
         `;
         container.appendChild(item);
@@ -697,8 +974,8 @@ async function loadMembers() {
 async function handleAddMember(e) {
     e.preventDefault();
     if (!currentWorkspaceId) return;
+    const userId = document.getElementById("new-member-userid").value.trim();
 
-    const userId = parseInt(document.getElementById("new-member-userid").value);
     const res = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "POST", { user_id: userId });
     if (res) {
         document.getElementById("new-member-userid").value = "";
@@ -707,11 +984,43 @@ async function handleAddMember(e) {
 }
 
 async function handleRemoveMember(userId) {
-    if (!confirm(`Bạn có chắc muốn xóa thành viên #${userId} khỏi workspace?`)) return;
+    if (!confirm(`Bạn có chắc muốn xóa thành viên #${userId}?`)) return;
     const res = await apiCall(`/workspaces/${currentWorkspaceId}/members/${userId}`, "DELETE");
     if (res) {
         loadMembers();
     }
+}
+
+async function loadFullActivities() {
+    if (!currentWorkspaceId) return;
+    const activities = await apiCall(`/workspaces/${currentWorkspaceId}/activities`, "GET");
+    const container = document.getElementById("full-activity-timeline");
+    container.innerHTML = "";
+
+    if (!activities || activities.length === 0) {
+        container.innerHTML = `<p class="p-6 text-sm text-slate-400 text-center">Chưa có hoạt động nào.</p>`;
+        return;
+    }
+
+    activities.forEach(act => {
+        const item = document.createElement("div");
+        item.className = "flex items-start gap-4 p-4 rounded-2xl bg-white border border-slate-200/70 shadow-sm";
+        const timeStr = new Date(act.created_at).toLocaleString('vi-VN');
+
+        item.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 text-xs mt-0.5">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-semibold text-slate-800">${act.description}</p>
+                <div class="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                    <span>${timeStr}</span>
+                    <span class="font-mono text-[11px] bg-slate-100 px-1.5 py-0.2 rounded font-bold text-slate-600">${act.action_type}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
 }
 
 
@@ -720,9 +1029,15 @@ async function handleRemoveMember(userId) {
 // ==========================================
 
 function openModal(id) {
-    document.getElementById(id).classList.remove("hidden");
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("hidden");
 }
 
 function closeModal(id) {
-    document.getElementById(id).classList.add("hidden");
+    const el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+}
+
+function toggleFilterMenu() {
+    alert("Bộ lọc nhanh: Bạn có thể nhập từ khóa vào ô tìm kiếm hoặc click trực tiếp vào trạng thái trên bảng!");
 }

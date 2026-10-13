@@ -62,17 +62,23 @@ def get_workspaces(db: Session = Depends(get_db), current_user: models.User = De
     return workspaces
 
 
-# 3. XEM CHI TIẾT 1 WORKSPACE
+# 3. XEM CHI TIẾT 1 WORKSPACE (Owner và Member đều xem được)
 @router.get("/{workspace_id}", response_model=schemas.WorkspaceResponse)
-def get_workspace(workspace_id: int, db: Session = Depends(get_db),
+def get_workspace(workspace_id: str, db: Session = Depends(get_db),
                   current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
 
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace không tồn tại")
 
-    # Kiểm tra quyền: Chỉ cho xem nếu mình là owner (sau này sẽ mở rộng cho member)
-    if workspace.owner_id != current_user.id:
+    # Kiểm tra quyền: Cho phép cả Owner lẫn Member xem thông tin
+    is_owner = (str(workspace.owner_id) == str(current_user.id))
+    is_member = db.query(models.WorkspaceMember).filter(
+        models.WorkspaceMember.workspace_id == str(workspace_id),
+        models.WorkspaceMember.user_id == str(current_user.id)
+    ).first()
+
+    if not is_owner and not is_member:
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập Workspace này")
 
     return workspace
@@ -80,7 +86,7 @@ def get_workspace(workspace_id: int, db: Session = Depends(get_db),
 
 # 4. SỬA WORKSPACE (Chỉ Owner)
 @router.put("/{workspace_id}", response_model=schemas.WorkspaceResponse)
-def update_workspace(workspace_id: int, update_data: schemas.WorkspaceCreate, db: Session = Depends(get_db),
+def update_workspace(workspace_id: str, update_data: schemas.WorkspaceCreate, db: Session = Depends(get_db),
                      current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
 
@@ -88,7 +94,7 @@ def update_workspace(workspace_id: int, update_data: schemas.WorkspaceCreate, db
         raise HTTPException(status_code=404, detail="Workspace không tồn tại")
 
     # Kiểm tra quyền: Chỉ Owner mới được sửa
-    if workspace.owner_id != current_user.id:
+    if str(workspace.owner_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Chỉ Owner mới được quyền sửa Workspace")
 
     # Cập nhật thông tin
@@ -101,7 +107,7 @@ def update_workspace(workspace_id: int, update_data: schemas.WorkspaceCreate, db
 
 # 5. XÓA WORKSPACE (Chỉ Owner)
 @router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_workspace(workspace_id: int, db: Session = Depends(get_db),
+def delete_workspace(workspace_id: str, db: Session = Depends(get_db),
                      current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
 
@@ -109,7 +115,7 @@ def delete_workspace(workspace_id: int, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Workspace không tồn tại")
 
     # Kiểm tra quyền: Chỉ Owner mới được xóa
-    if workspace.owner_id != current_user.id:
+    if str(workspace.owner_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Chỉ Owner mới được quyền xóa Workspace")
 
     db.delete(workspace)
@@ -120,7 +126,7 @@ def delete_workspace(workspace_id: int, db: Session = Depends(get_db),
 # 1. THÊM THÀNH VIÊN VÀO WORKSPACE (Chỉ Owner)
 @router.post("/{workspace_id}/members", response_model=schemas.WorkspaceMemberResponse,
           status_code=status.HTTP_201_CREATED)
-def add_workspace_member(workspace_id: int, member_data: schemas.WorkspaceMemberCreate, db: Session = Depends(get_db),
+def add_workspace_member(workspace_id: str, member_data: schemas.WorkspaceMemberCreate, db: Session = Depends(get_db),
                          current_user: models.User = Depends(get_current_user)):
     # B1: Kiểm tra Workspace có tồn tại không (404)
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
@@ -128,7 +134,7 @@ def add_workspace_member(workspace_id: int, member_data: schemas.WorkspaceMember
         raise HTTPException(status_code=404, detail="Workspace không tồn tại!")
 
     # B2: Kiểm tra quyền - Chỉ Owner mới được thêm người (403)
-    if workspace.owner_id != current_user.id:
+    if str(workspace.owner_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Chỉ Owner mới có quyền thêm thành viên!")
 
     # B3: Kiểm tra User muốn thêm có thực sự tồn tại trong hệ thống không (404)
@@ -137,12 +143,12 @@ def add_workspace_member(workspace_id: int, member_data: schemas.WorkspaceMember
         raise HTTPException(status_code=404, detail="Người dùng không tồn tại!")
 
     # B4: Kiểm tra xem User đó đã là thành viên chưa hoặc có phải chính là Owner không (409)
-    if member_data.user_id == workspace.owner_id:
+    if str(member_data.user_id) == str(workspace.owner_id):
         raise HTTPException(status_code=409, detail="User này là Owner của Workspace rồi!")
 
     existing_member = db.query(models.WorkspaceMember).filter(
-        models.WorkspaceMember.workspace_id == workspace_id,
-        models.WorkspaceMember.user_id == member_data.user_id
+        models.WorkspaceMember.workspace_id == str(workspace_id),
+        models.WorkspaceMember.user_id == str(member_data.user_id)
     ).first()
     if existing_member:
         raise HTTPException(status_code=409, detail="Người dùng này đã là thành viên của Workspace!")
@@ -168,43 +174,43 @@ def add_workspace_member(workspace_id: int, member_data: schemas.WorkspaceMember
 
 # 2. XEM DANH SÁCH THÀNH VIÊN (Owner và Member đều xem được)
 @router.get("/{workspace_id}/members", response_model=list[schemas.WorkspaceMemberResponse])
-def get_workspace_members(workspace_id: int, db: Session = Depends(get_db),
+def get_workspace_members(workspace_id: str, db: Session = Depends(get_db),
                           current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace không tồn tại!")
 
     # Kiểm tra quyền: Phải là Owner hoặc đang là Member thì mới được xem
-    is_owner = (workspace.owner_id == current_user.id)
+    is_owner = (str(workspace.owner_id) == str(current_user.id))
     is_member = db.query(models.WorkspaceMember).filter(
-        models.WorkspaceMember.workspace_id == workspace_id,
-        models.WorkspaceMember.user_id == current_user.id
+        models.WorkspaceMember.workspace_id == str(workspace_id),
+        models.WorkspaceMember.user_id == str(current_user.id)
     ).first()
 
     if not is_owner and not is_member:
         raise HTTPException(status_code=403, detail="Bạn không có quyền xem danh sách này!")
 
     # Trả về danh sách
-    members = db.query(models.WorkspaceMember).filter(models.WorkspaceMember.workspace_id == workspace_id).all()
+    members = db.query(models.WorkspaceMember).filter(models.WorkspaceMember.workspace_id == str(workspace_id)).all()
     return members
 
 
 # 3. XÓA THÀNH VIÊN KHỎI WORKSPACE (Chỉ Owner)
 @router.delete("/{workspace_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_workspace_member(workspace_id: int, user_id: int, db: Session = Depends(get_db),
+def remove_workspace_member(workspace_id: str, user_id: str, db: Session = Depends(get_db),
                             current_user: models.User = Depends(get_current_user)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace không tồn tại!")
 
     # Kiểm tra quyền
-    if workspace.owner_id != current_user.id:
+    if str(workspace.owner_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Chỉ Owner mới có quyền xóa thành viên!")
 
     # Tìm record thành viên
     member_to_remove = db.query(models.WorkspaceMember).filter(
-        models.WorkspaceMember.workspace_id == workspace_id,
-        models.WorkspaceMember.user_id == user_id
+        models.WorkspaceMember.workspace_id == str(workspace_id),
+        models.WorkspaceMember.user_id == str(user_id)
     ).first()
 
     if not member_to_remove:
@@ -225,18 +231,18 @@ def remove_workspace_member(workspace_id: int, user_id: int, db: Session = Depen
 # JOIN VÀO WORKSPACE BẰNG ID
 @router.post("/{workspace_id}/join", response_model=schemas.WorkspaceMemberResponse, status_code=status.HTTP_201_CREATED)
 def join_workspace_by_id(
-    workspace_id: int,
+    workspace_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace không tồn tại!")
-    if workspace.owner_id == current_user.id:
+    if str(workspace.owner_id) == str(current_user.id):
         raise HTTPException(status_code=400, detail="Bạn chính là chủ sở hữu của Workspace này rồi")
     member = db.query(models.WorkspaceMember).filter(
-        models.WorkspaceMember.workspace_id == workspace_id,
-        models.WorkspaceMember.user_id == current_user.id).first()
+        models.WorkspaceMember.workspace_id == str(workspace_id),
+        models.WorkspaceMember.user_id == str(current_user.id)).first()
     if member:
         raise HTTPException(status_code=400, detail="Bạn đã là thành viên của Workspace này rồi!")
     new_member = models.WorkspaceMember(
@@ -259,7 +265,7 @@ def join_workspace_by_id(
 # Lấy danh sách nhật ký hoạt động của Workspace
 @router.get("/{workspace_id}/activities", response_model = list[schemas.WorkspaceActivityResponse], status_code=status.HTTP_200_OK)
 def get_workspace_activities(
-        workspace_id: int,
+        workspace_id: str,
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user),
 ):
@@ -267,13 +273,14 @@ def get_workspace_activities(
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace không tồn tại")
     is_member = db.query(models.WorkspaceMember).filter(
-        models.WorkspaceMember.workspace_id == workspace_id,
-        models.WorkspaceMember.user_id == current_user.id
+        models.WorkspaceMember.workspace_id == str(workspace_id),
+        models.WorkspaceMember.user_id == str(current_user.id)
     ).first()
-    if workspace.owner_id != current_user.id and not is_member:
+    is_owner = (str(workspace.owner_id) == str(current_user.id))
+    if not is_owner and not is_member:
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập lịch sử workspace này")
     activities = db.query(models.WorkspaceActivity).filter(
-        models.WorkspaceActivity.workspace_id == workspace_id
+        models.WorkspaceActivity.workspace_id == str(workspace_id)
     ).order_by(models.WorkspaceActivity.created_at.desc()).all()
     return activities
 

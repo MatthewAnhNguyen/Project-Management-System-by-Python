@@ -6,19 +6,20 @@ from app import models, schemas
 from app.database import get_db
 from app.security import get_current_user
 from app.routers.comments import log_task_activity
+from app.routers.workspaces import log_workspace_activity
 
 router = APIRouter(tags=["Tasks"])
 
 # Hàm Helper kiểm tra xem user có phải là Owner hoặc Member của Workspace không
-def check_workspace_access(workspace_id: int, user_id: int, db: Session):
+def check_workspace_access(workspace_id: str, user_id: str, db: Session):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace không tồn tại!")
 
-    is_owner = (workspace.owner_id == user_id)
+    is_owner = (str(workspace.owner_id) == str(user_id))
     is_member = db.query(models.WorkspaceMember).filter(
-        models.WorkspaceMember.workspace_id == workspace_id,
-        models.WorkspaceMember.user_id == user_id
+        models.WorkspaceMember.workspace_id == str(workspace_id),
+        models.WorkspaceMember.user_id == str(user_id)
     ).first()
 
     if not is_owner and not is_member:
@@ -30,7 +31,7 @@ def check_workspace_access(workspace_id: int, user_id: int, db: Session):
 # 1. TẠO TASK MỚI TRONG WORKSPACE
 @router.post("/workspaces/{workspace_id}/tasks", response_model=schemas.TaskResponse, status_code=status.HTTP_201_CREATED)
 def create_task(
-    workspace_id: int,
+    workspace_id: str,
     task_data: schemas.TaskCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -56,13 +57,20 @@ def create_task(
     db.commit()
     db.refresh(new_task)
 
-    # Ghi log lịch sử hoạt động
+    # Ghi log lịch sử hoạt động Task & Workspace
     log_task_activity(
         db=db,
         task_id=new_task.id,
         user_id=current_user.id,
         action_type="TASK_CREATED",
         description=f"{current_user.username} đã tạo công việc '{new_task.title}'"
+    )
+    log_workspace_activity(
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+        action_type="TASK_CREATED",
+        description=f"{current_user.username} đã tạo công việc '{new_task.title}'",
+        db=db
     )
 
     return new_task
@@ -71,10 +79,10 @@ def create_task(
 # 2. LẤY DANH SÁCH TASK TRONG WORKSPACE (Hỗ trợ lọc theo status, priority, assignee_id)
 @router.get("/workspaces/{workspace_id}/tasks", response_model=list[schemas.TaskResponse])
 def get_workspace_tasks(
-    workspace_id: int,
+    workspace_id: str,
     task_status: Optional[str] = None,
     priority: Optional[str] = None,
-    assignee_id: Optional[int] = None,
+    assignee_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -104,7 +112,7 @@ def get_my_tasks(
 # 4. XEM CHI TIẾT 1 TASK
 @router.get("/tasks/{task_id}", response_model=schemas.TaskResponse)
 def get_task_detail(
-    task_id: int,
+    task_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -118,7 +126,7 @@ def get_task_detail(
 # 5. CẬP NHẬT TASK (Sửa thông tin / chuyển trạng thái / đổi người thực hiện)
 @router.put("/tasks/{task_id}", response_model=schemas.TaskResponse)
 def update_task(
-    task_id: int,
+    task_id: str,
     task_data: schemas.TaskUpdate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -150,6 +158,13 @@ def update_task(
             action_type="STATUS_CHANGED",
             description=f"{current_user.username} đã chuyển trạng thái từ '{old_status}' sang '{task.status}'"
         )
+        log_workspace_activity(
+            workspace_id=task.workspace_id,
+            user_id=current_user.id,
+            action_type="STATUS_CHANGED",
+            description=f"{current_user.username} đã chuyển trạng thái công việc '{task.title}' sang '{task.status}'",
+            db=db
+        )
     elif "assignee_id" in update_dict and update_dict["assignee_id"] != old_assignee_id:
         assignee_name = task.assignee.username if task.assignee else "Chưa gán"
         log_task_activity(
@@ -159,6 +174,13 @@ def update_task(
             action_type="ASSIGNEE_CHANGED",
             description=f"{current_user.username} đã đổi người thực hiện thành '{assignee_name}'"
         )
+        log_workspace_activity(
+            workspace_id=task.workspace_id,
+            user_id=current_user.id,
+            action_type="ASSIGNEE_CHANGED",
+            description=f"{current_user.username} đã gán công việc '{task.title}' cho '{assignee_name}'",
+            db=db
+        )
     elif "due_date" in update_dict and update_dict["due_date"] != old_due_date:
         log_task_activity(
             db=db,
@@ -166,6 +188,13 @@ def update_task(
             user_id=current_user.id,
             action_type="DEADLINE_CHANGED",
             description=f"{current_user.username} đã thay đổi hạn chót của công việc"
+        )
+        log_workspace_activity(
+            workspace_id=task.workspace_id,
+            user_id=current_user.id,
+            action_type="DEADLINE_CHANGED",
+            description=f"{current_user.username} đã đổi hạn chót công việc '{task.title}'",
+            db=db
         )
     elif update_dict:
         log_task_activity(
@@ -175,6 +204,13 @@ def update_task(
             action_type="TASK_UPDATED",
             description=f"{current_user.username} đã cập nhật thông tin công việc"
         )
+        log_workspace_activity(
+            workspace_id=task.workspace_id,
+            user_id=current_user.id,
+            action_type="TASK_UPDATED",
+            description=f"{current_user.username} đã cập nhật công việc '{task.title}'",
+            db=db
+        )
 
     return task
 
@@ -182,7 +218,7 @@ def update_task(
 # 6. XÓA TASK (Chỉ Creator hoặc Workspace Owner mới được xóa)
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(
-    task_id: int,
+    task_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -190,10 +226,17 @@ def delete_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task không tồn tại!")
     workspace = db.query(models.Workspace).filter(models.Workspace.id == task.workspace_id).first()
-    is_creator = (task.creator_id == current_user.id)
-    is_owner = (workspace and workspace.owner_id == current_user.id)
+    is_creator = (str(task.creator_id) == str(current_user.id))
+    is_owner = (workspace and str(workspace.owner_id) == str(current_user.id))
     if not is_creator and not is_owner:
         raise HTTPException(status_code=403, detail="Chỉ người tạo task hoặc Owner của Workspace mới được xóa task!")
+    log_workspace_activity(
+        workspace_id=task.workspace_id,
+        user_id=current_user.id,
+        action_type="TASK_DELETED",
+        description=f"{current_user.username} đã xóa công việc '{task.title}'",
+        db=db
+    )
     db.delete(task)
     db.commit()
     return
@@ -202,7 +245,7 @@ def delete_task(
 # 7. KANBAN BOARD VIEW (Phục vụ giao diện bảng Kanban)
 @router.get("/workspaces/{workspace_id}/kanban", response_model=schemas.KanbanBoardResponse)
 def get_workspace_kanban(
-    workspace_id: int,
+    workspace_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -210,9 +253,10 @@ def get_workspace_kanban(
     tasks = db.query(models.Task).filter(models.Task.workspace_id == workspace_id).all()
 
     return {
-        "workspace_id": workspace_id,
+        "workspace_id": str(workspace_id),
         "todo": [t for t in tasks if t.status == "TODO"],
         "in_progress": [t for t in tasks if t.status == "IN_PROGRESS"],
+        "review": [t for t in tasks if t.status == "REVIEW"],
         "done": [t for t in tasks if t.status == "DONE"],
         "cancelled": [t for t in tasks if t.status == "CANCELLED"]
     }
@@ -221,7 +265,7 @@ def get_workspace_kanban(
 # 8. THỐNG KÊ TIẾN ĐỘ WORKSPACE (Phục vụ giao diện Dashboard / Summary)
 @router.get("/workspaces/{workspace_id}/summary", response_model=schemas.WorkspaceSummaryResponse)
 def get_workspace_summary(
-    workspace_id: int,
+    workspace_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -231,15 +275,17 @@ def get_workspace_summary(
     total = len(tasks)
     todo = len([t for t in tasks if t.status == "TODO"])
     in_progress = len([t for t in tasks if t.status == "IN_PROGRESS"])
+    review = len([t for t in tasks if t.status == "REVIEW"])
     done = len([t for t in tasks if t.status == "DONE"])
     cancelled = len([t for t in tasks if t.status == "CANCELLED"])
     completion_rate = round((done / total * 100), 2) if total > 0 else 0.0
 
     return {
-        "workspace_id": workspace_id,
+        "workspace_id": str(workspace_id),
         "total_tasks": total,
         "todo_count": todo,
         "in_progress_count": in_progress,
+        "review_count": review,
         "done_count": done,
         "cancelled_count": cancelled,
         "completion_rate": completion_rate
