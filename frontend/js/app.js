@@ -12,6 +12,10 @@ let currentTaskId = null;
 let currentMeetingId = null;
 let calendarInstance = null;
 let activeSidebarView = "home";
+let currentCalendarFilter = "ALL"; // ALL, MEETING, TASK_DEADLINE
+let calendarModalType = "MEETING";  // MEETING or TASK
+let calendarModalMode = "CREATE";   // CREATE or EDIT_MEETING
+let currentMeetingData = null;
 
 // ==========================================
 // 1. QUẢN LÝ AUTHENTICATION & API CALL
@@ -776,6 +780,40 @@ async function handleJoinWorkspace(e) {
 // 9. LỊCH FULLCALENDAR & MY TASKS
 // ==========================================
 
+// Helper hiển thị thông báo nổi Toast (Google Calendar style)
+function showToast(message, type = "success") {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+    const toast = document.createElement("div");
+    const bgClass = type === "success" 
+        ? "bg-slate-900 text-white border-slate-700" 
+        : (type === "error" ? "bg-rose-600 text-white border-rose-500" : "bg-blue-600 text-white border-blue-500");
+    const icon = type === "success" 
+        ? "fa-solid fa-check-circle text-emerald-400" 
+        : (type === "error" ? "fa-solid fa-circle-exclamation text-rose-200" : "fa-solid fa-info-circle text-blue-200");
+
+    toast.className = `toast-item pointer-events-auto px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-3 text-xs font-semibold ${bgClass}`;
+    toast.innerHTML = `
+        <i class="${icon} text-base shrink-0"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-2 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.transition = "all 0.3s ease";
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(10px)";
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Helper định dạng ngày giờ cho input datetime-local (YYYY-MM-DDTHH:mm) theo giờ địa phương
+function formatDateTimeLocal(d) {
+    if (!d) return "";
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function initOrRefreshCalendar() {
     const calEl = document.getElementById("calendar-container");
 
@@ -785,20 +823,36 @@ function initOrRefreshCalendar() {
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
             },
             locale: 'vi',
             buttonText: {
                 today: 'Hôm nay',
                 month: 'Tháng',
                 week: 'Tuần',
-                day: 'Ngày'
+                day: 'Ngày',
+                list: 'Lịch biểu'
             },
-            dateClick: function(info) {
-                document.getElementById("meet-start").value = `${info.dateStr}T09:00`;
-                document.getElementById("meet-end").value = `${info.dateStr}T10:00`;
-                openModal("create-meeting-modal");
+            // Tính năng Google Calendar:
+            navLinks: true,         // Click ngày để phóng to sang chế độ Ngày/Tuần
+            selectable: true,       // Bật tính năng click/kéo chọn khung giờ trực tiếp
+            selectMirror: true,     // Hiển thị khung tạm thời khi kéo thả chọn giờ
+            unselectAuto: true,
+            editable: true,         // Kéo thả (drag & drop) dời lịch & co giãn thời lượng
+            eventResizableFromStart: false,
+            nowIndicator: true,     // Dải màu đỏ đánh dấu mốc giờ hiện tại trên lịch tuần/ngày
+            scrollTime: '08:00:00', // Cuộn mặc định tới 8h sáng
+            slotMinTime: '06:00:00',
+            slotMaxTime: '23:00:00',
+            slotDuration: '00:30:00',
+            dayMaxEvents: 4,
+
+            // SỰ KIỆN 1: Click hoặc kéo chọn ô giờ trên lịch tuần/tháng (Google Calendar Quick Create)
+            select: function(selectionInfo) {
+                openCreateCalendarEventModal(selectionInfo);
             },
+
+            // SỰ KIỆN 2: Lấy dữ liệu sự kiện từ Backend (có hỗ trợ bộ lọc)
             events: async function(info, successCallback, failureCallback) {
                 if (!currentWorkspaceId) {
                     successCallback([]);
@@ -807,20 +861,71 @@ function initOrRefreshCalendar() {
                 const url = `/workspaces/${currentWorkspaceId}/calendar-events?from_date=${info.startStr}&to_date=${info.endStr}`;
                 const eventsData = await apiCall(url, "GET");
                 if (eventsData) {
-                    const fcEvents = eventsData.map(e => ({
-                        id: e.id,
-                        title: e.title,
-                        start: e.start_time,
-                        end: e.end_time || e.start_time,
-                        backgroundColor: e.event_type === 'MEETING' ? '#10b981' : '#2563eb',
-                        borderColor: e.event_type === 'MEETING' ? '#059669' : '#1d4ed8',
-                        extendedProps: e
-                    }));
+                    let filtered = eventsData;
+                    if (currentCalendarFilter !== "ALL") {
+                        filtered = eventsData.filter(e => e.event_type === currentCalendarFilter);
+                    }
+
+                    const fcEvents = filtered.map(e => {
+                        const isMeeting = (e.event_type === 'MEETING');
+                        let bg = isMeeting ? '#059669' : '#2563eb';
+                        let border = isMeeting ? '#047857' : '#1d4ed8';
+
+                        if (!isMeeting) {
+                            if (e.task_priority === 'URGENT') { bg = '#dc2626'; border = '#b91c1c'; }
+                            else if (e.task_priority === 'HIGH') { bg = '#ea580c'; border = '#c2410c'; }
+                            else if (e.task_priority === 'LOW') { bg = '#16a34a'; border = '#15803d'; }
+                        }
+
+                        return {
+                            id: e.id,
+                            title: e.title,
+                            start: e.start_time,
+                            end: e.end_time || e.start_time,
+                            backgroundColor: bg,
+                            borderColor: border,
+                            textColor: '#ffffff',
+                            allDay: false,
+                            extendedProps: e
+                        };
+                    });
                     successCallback(fcEvents);
                 } else {
                     failureCallback();
                 }
             },
+
+            // Render giao diện thẻ sự kiện đẹp mắt với icon
+            eventContent: function(arg) {
+                const props = arg.event.extendedProps;
+                const isMeeting = (props.event_type === 'MEETING');
+                const iconClass = isMeeting ? 'fa-solid fa-video' : 'fa-solid fa-thumbtack';
+                const cleanTitle = isMeeting 
+                    ? arg.event.title.replace('📅 [Họp] ', '') 
+                    : arg.event.title.replace('📌 [Hạn chót] ', '');
+                const timeText = arg.timeText ? `<span class="opacity-80 text-[10px] mr-1">${arg.timeText}</span>` : '';
+
+                const el = document.createElement('div');
+                el.className = 'flex items-center gap-1.5 px-1.5 py-0.5 truncate w-full text-white text-xs leading-tight';
+                el.innerHTML = `
+                    <i class="${iconClass} text-[10px] shrink-0"></i>
+                    ${timeText}
+                    <span class="font-bold truncate">${cleanTitle}</span>
+                `;
+                return { domNodes: [el] };
+            },
+
+            // SỰ KIỆN 3: Kéo thả di chuyển sự kiện sang ngày/giờ khác (Drag & Drop)
+            eventDrop: async function(info) {
+                await handleEventDrop(info);
+            },
+
+            // SỰ KIỆN 4: Kéo mép dưới để tăng/giảm thời lượng cuộc họp (Resize)
+            eventResize: async function(info) {
+                await handleEventResize(info);
+            },
+
+            // SỰ KIỆN 5: Click vào sự kiện để xem chi tiết
             eventClick: function(info) {
                 const props = info.event.extendedProps;
                 if (props.event_type === 'MEETING') {
@@ -837,18 +942,367 @@ function initOrRefreshCalendar() {
     }
 }
 
+// Xử lý kéo thả sự kiện sang giờ/ngày mới
+async function handleEventDrop(info) {
+    const props = info.event.extendedProps;
+    const isMeeting = (props.event_type === 'MEETING');
+    const rawId = props.id.replace(isMeeting ? 'meeting-' : 'task-', '');
+    const newStart = info.event.start;
+    const newEnd = info.event.end || new Date(newStart.getTime() + 60 * 60 * 1000);
+
+    try {
+        if (isMeeting) {
+            const res = await apiCall(`/meetings/${rawId}`, "PUT", {
+                start_time: newStart.toISOString(),
+                end_time: newEnd.toISOString()
+            });
+            if (!res) {
+                info.revert();
+                return;
+            }
+            const timeStr = newStart.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = newStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+            showToast(`Đã dời cuộc họp sang ${timeStr} ngày ${dateStr}`);
+        } else {
+            const res = await apiCall(`/tasks/${rawId}`, "PUT", {
+                due_date: newStart.toISOString()
+            });
+            if (!res) {
+                info.revert();
+                return;
+            }
+            const dateStr = newStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+            showToast(`Đã đổi hạn chót task sang ${dateStr}`);
+        }
+        loadRecentActivitiesWidget();
+    } catch (err) {
+        info.revert();
+        showToast("Lỗi khi dời lịch: " + err.message, "error");
+    }
+}
+
+// Xử lý kéo dãn thời lượng cuộc họp
+async function handleEventResize(info) {
+    const props = info.event.extendedProps;
+    if (props.event_type !== 'MEETING') {
+        info.revert();
+        return;
+    }
+    const rawId = props.id.replace('meeting-', '');
+    const newStart = info.event.start;
+    const newEnd = info.event.end;
+
+    try {
+        const res = await apiCall(`/meetings/${rawId}`, "PUT", {
+            start_time: newStart.toISOString(),
+            end_time: newEnd.toISOString()
+        });
+        if (!res) {
+            info.revert();
+            return;
+        }
+        const diffMin = Math.round((newEnd - newStart) / 60000);
+        showToast(`Đã cập nhật thời lượng họp: ${diffMin} phút`);
+        loadRecentActivitiesWidget();
+    } catch (err) {
+        info.revert();
+        showToast("Lỗi khi chỉnh thời lượng: " + err.message, "error");
+    }
+}
+
+// Chuyển đổi bộ lọc sự kiện trên lịch
+function setCalendarFilter(filter) {
+    currentCalendarFilter = filter;
+    const btns = {
+        'ALL': document.getElementById("cal-filter-all"),
+        'MEETING': document.getElementById("cal-filter-meetings"),
+        'TASK_DEADLINE': document.getElementById("cal-filter-tasks")
+    };
+
+    Object.keys(btns).forEach(k => {
+        const b = btns[k];
+        if (!b) return;
+        if (k === filter) {
+            b.className = "px-3 py-1.5 rounded-xl bg-white text-blue-600 shadow-sm transition";
+        } else {
+            b.className = "px-3 py-1.5 rounded-xl hover:text-slate-900 transition";
+        }
+    });
+
+    if (calendarInstance) {
+        calendarInstance.refetchEvents();
+    }
+}
+
+// Mở Modal tạo lịch (Google Calendar Style) với khung giờ được click / kéo chọn
+async function openCreateCalendarEventModal(selectionInfo = null) {
+    calendarModalMode = 'CREATE';
+    calendarModalType = 'MEETING';
+
+    document.getElementById("cal-modal-title").textContent = "Lên lịch sự kiện mới";
+    document.getElementById("cal-modal-subtitle").textContent = "Google Calendar: Chọn giờ và lưu trực tiếp";
+    document.getElementById("cal-type-switcher").classList.remove("hidden");
+    document.getElementById("cal-submit-btn").innerHTML = '<i class="fa-regular fa-calendar-check mr-1.5"></i> Lưu vào lịch';
+
+    populateCalendarWorkspaceSelect(currentWorkspaceId);
+
+    // Reset các trường
+    document.getElementById("meet-title").value = "";
+    document.getElementById("meet-desc").value = "";
+    document.getElementById("meet-link").value = "";
+    document.getElementById("cal-task-desc").value = "";
+
+    // Load danh sách người thực hiện cho Task
+    populateCalendarAssigneeSelect();
+
+    if (selectionInfo) {
+        let start = new Date(selectionInfo.start);
+        let end = selectionInfo.end ? new Date(selectionInfo.end) : null;
+
+        if (selectionInfo.allDay) {
+            // Xem theo Tháng (click hoặc kéo ngày)
+            start.setHours(9, 0, 0, 0);
+            if (!end || end.getTime() <= start.getTime()) {
+                end = new Date(start.getTime() + 60 * 60 * 1000);
+            } else {
+                const daysDiff = Math.round((end - start) / (1000 * 60 * 60 * 24));
+                if (daysDiff <= 1) {
+                    end = new Date(start.getTime() + 60 * 60 * 1000);
+                } else {
+                    end.setDate(end.getDate() - 1);
+                    end.setHours(18, 0, 0, 0);
+                }
+            }
+        } else {
+            // Xem theo Tuần hoặc Ngày (click hoặc kéo ô giờ chính xác)
+            if (!end || end.getTime() === start.getTime()) {
+                end = new Date(start.getTime() + 60 * 60 * 1000);
+            }
+        }
+
+        document.getElementById("meet-start").value = formatDateTimeLocal(start);
+        document.getElementById("meet-end").value = formatDateTimeLocal(end);
+    } else {
+        // Mặc định tới giờ tròn kế tiếp
+        const now = new Date();
+        now.setMinutes(0, 0, 0);
+        now.setHours(now.getHours() + 1);
+        const end = new Date(now.getTime() + 60 * 60 * 1000);
+
+        document.getElementById("meet-start").value = formatDateTimeLocal(now);
+        document.getElementById("meet-end").value = formatDateTimeLocal(end);
+    }
+
+    switchCalendarModalTab('MEETING');
+    openModal("create-meeting-modal");
+
+    setTimeout(() => {
+        const titleInput = document.getElementById("meet-title");
+        if (titleInput) titleInput.focus();
+    }, 150);
+}
+
+// Chuyển tab giữa Cuộc họp vs Công việc trong Modal
+function switchCalendarModalTab(type) {
+    calendarModalType = type;
+    const tabMeeting = document.getElementById("tab-cal-meeting");
+    const tabTask = document.getElementById("tab-cal-task");
+    const fieldsMeeting = document.getElementById("cal-fields-meeting");
+    const fieldsTask = document.getElementById("cal-fields-task");
+    const durationChips = document.getElementById("cal-duration-chips");
+    const iconContainer = document.getElementById("cal-modal-icon");
+
+    if (type === 'MEETING') {
+        tabMeeting.className = "flex-1 py-2 text-xs font-bold rounded-xl bg-white text-emerald-700 shadow-sm flex items-center justify-center gap-2 transition";
+        tabTask.className = "flex-1 py-2 text-xs font-bold rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2 transition";
+        fieldsMeeting.classList.remove("hidden");
+        fieldsTask.classList.add("hidden");
+        durationChips.classList.remove("hidden");
+        iconContainer.className = "w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-base font-bold shadow-sm";
+        iconContainer.innerHTML = '<i class="fa-solid fa-video"></i>';
+    } else {
+        tabTask.className = "flex-1 py-2 text-xs font-bold rounded-xl bg-white text-blue-700 shadow-sm flex items-center justify-center gap-2 transition";
+        tabMeeting.className = "flex-1 py-2 text-xs font-bold rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2 transition";
+        fieldsTask.classList.remove("hidden");
+        fieldsMeeting.classList.add("hidden");
+        durationChips.classList.add("hidden");
+        iconContainer.className = "w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-base font-bold shadow-sm";
+        iconContainer.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+    }
+}
+
+// Đặt thời lượng nhanh (+15p, +30p, +1h...)
+function setQuickDuration(minutes) {
+    const startInput = document.getElementById("meet-start");
+    const endInput = document.getElementById("meet-end");
+    if (!startInput || !endInput) return;
+
+    let start = startInput.value ? new Date(startInput.value) : new Date();
+    const end = new Date(start.getTime() + minutes * 60000);
+    endInput.value = formatDateTimeLocal(end);
+}
+
+function onCalendarStartTimeChange() {
+    const startInput = document.getElementById("meet-start");
+    const endInput = document.getElementById("meet-end");
+    if (!startInput || !endInput || !startInput.value) return;
+
+    const start = new Date(startInput.value);
+    const end = endInput.value ? new Date(endInput.value) : null;
+    if (!end || end <= start) {
+        const newEnd = new Date(start.getTime() + 60 * 60000);
+        endInput.value = formatDateTimeLocal(newEnd);
+    }
+}
+
+function generateAutoJitsiLink() {
+    const wsId = document.getElementById("cal-modal-workspace").value || currentWorkspaceId || "project";
+    const randCode = Math.random().toString(36).substring(2, 8);
+    const link = `https://meet.jit.si/pms-ws${wsId}-meet-${randCode}`;
+    document.getElementById("meet-link").value = link;
+    showToast("Đã tạo link Jitsi Meet tự động!");
+}
+
+function populateCalendarWorkspaceSelect(selectedId) {
+    const select = document.getElementById("cal-modal-workspace");
+    if (!select) return;
+    select.innerHTML = "";
+
+    allWorkspaces.forEach(ws => {
+        const opt = document.createElement("option");
+        opt.value = ws.id;
+        opt.textContent = `${ws.name} (#${ws.id})`;
+        if (String(ws.id) === String(selectedId)) {
+            opt.selected = true;
+        }
+        select.appendChild(opt);
+    });
+}
+
+async function populateCalendarAssigneeSelect() {
+    const select = document.getElementById("cal-task-assignee");
+    if (!select || !currentWorkspaceId) return;
+    select.innerHTML = '<option value="">-- Chưa gán cho ai --</option>';
+
+    const members = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "GET");
+    if (members && members.length > 0) {
+        members.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.user_id;
+            opt.textContent = `Thành viên #${m.user_id} (${m.role})`;
+            select.appendChild(opt);
+        });
+    }
+}
+
+// Xử lý nộp Form Tạo/Sửa Lịch
+async function handleCalendarEventSubmit(e) {
+    e.preventDefault();
+    const wsId = document.getElementById("cal-modal-workspace").value || currentWorkspaceId;
+    if (!wsId) {
+        alert("Vui lòng chọn Dự án / Workspace!");
+        return;
+    }
+
+    const title = document.getElementById("meet-title").value.trim();
+    const startVal = document.getElementById("meet-start").value;
+    const endVal = document.getElementById("meet-end").value;
+
+    if (!title) {
+        alert("Vui lòng nhập tiêu đề!");
+        return;
+    }
+
+    if (new Date(startVal) >= new Date(endVal)) {
+        alert("Thời gian kết thúc phải diễn ra sau thời gian bắt đầu!");
+        return;
+    }
+
+    // CHẾ ĐỘ SỬA CUỘC HỌP
+    if (calendarModalMode === 'EDIT_MEETING') {
+        const payload = {
+            title,
+            description: document.getElementById("meet-desc").value.trim() || null,
+            start_time: new Date(startVal).toISOString(),
+            end_time: new Date(endVal).toISOString(),
+            meeting_link: document.getElementById("meet-link").value.trim() || null
+        };
+        const res = await apiCall(`/meetings/${currentMeetingId}`, "PUT", payload);
+        if (res) {
+            closeModal("create-meeting-modal");
+            showToast("Đã cập nhật cuộc họp thành công!");
+            if (calendarInstance) calendarInstance.refetchEvents();
+            loadRecentActivitiesWidget();
+        }
+        return;
+    }
+
+    // CHẾ ĐỘ TẠO MỚI
+    if (calendarModalType === 'MEETING') {
+        const linkVal = document.getElementById("meet-link").value.trim();
+        const payload = {
+            title,
+            description: document.getElementById("meet-desc").value.trim() || null,
+            start_time: new Date(startVal).toISOString(),
+            end_time: new Date(endVal).toISOString(),
+            meeting_link: linkVal || null
+        };
+        const res = await apiCall(`/workspaces/${wsId}/meetings`, "POST", payload);
+        if (res) {
+            closeModal("create-meeting-modal");
+            showToast("Đã lên lịch cuộc họp mới thành công!");
+            if (calendarInstance) calendarInstance.refetchEvents();
+            loadRecentActivitiesWidget();
+        }
+    } else {
+        // TẠO TASK KÈM HẠN CHÓT TRÊN LỊCH
+        const priority = document.getElementById("cal-task-priority").value;
+        const statusVal = document.getElementById("cal-task-status").value;
+        const assigneeId = document.getElementById("cal-task-assignee").value || null;
+        const desc = document.getElementById("cal-task-desc").value.trim() || null;
+
+        const payload = {
+            title,
+            description: desc,
+            priority,
+            status: statusVal,
+            due_date: new Date(endVal).toISOString(),
+            assignee_id: assigneeId
+        };
+        const res = await apiCall(`/workspaces/${wsId}/tasks`, "POST", payload);
+        if (res) {
+            closeModal("create-meeting-modal");
+            showToast("Đã tạo công việc và hạn chót trên lịch!");
+            if (calendarInstance) calendarInstance.refetchEvents();
+            if (String(wsId) === String(currentWorkspaceId)) {
+                loadWorkspaceDetails();
+            }
+        }
+    }
+}
+
+// Mở Modal xem chi tiết cuộc họp
 function openMeetingDetail(event) {
     const rawId = event.id.replace('meeting-', '');
     currentMeetingId = rawId;
     const props = event.extendedProps;
+    currentMeetingData = {
+        id: rawId,
+        title: event.title.replace('📅 [Họp] ', ''),
+        description: props.description || '',
+        start: event.start,
+        end: event.end,
+        meeting_link: props.meeting_link || '',
+        workspace_id: props.workspace_id || currentWorkspaceId
+    };
 
-    document.getElementById("md-title").textContent = event.title.replace('📅 [Họp] ', '');
+    document.getElementById("md-title").textContent = currentMeetingData.title;
     document.getElementById("md-desc").textContent = props.description || "Không có nội dung mô tả.";
-    document.getElementById("md-creator").textContent = props.creator ? props.creator.username : "Owner";
+    document.getElementById("md-creator").textContent = props.creator ? props.creator.username : "Thành viên";
 
     const startStr = new Date(event.start).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
-    const endStr = new Date(event.end).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    document.getElementById("md-time").textContent = `${startStr} - ${endStr}`;
+    const endStr = event.end ? new Date(event.end).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+    document.getElementById("md-time").textContent = endStr ? `${startStr} - ${endStr}` : startStr;
 
     const joinBtn = document.getElementById("md-join-btn");
     joinBtn.href = props.meeting_link || "#";
@@ -856,37 +1310,34 @@ function openMeetingDetail(event) {
     openModal("meeting-detail-modal");
 }
 
-async function handleCreateMeeting(e) {
-    e.preventDefault();
-    if (!currentWorkspaceId) return;
+// Mở Modal chỉnh sửa cuộc họp từ Modal chi tiết
+function openEditMeetingModal() {
+    if (!currentMeetingData) return;
+    closeModal("meeting-detail-modal");
 
-    const title = document.getElementById("meet-title").value.trim();
-    const description = document.getElementById("meet-desc").value.trim();
-    const startVal = document.getElementById("meet-start").value;
-    const endVal = document.getElementById("meet-end").value;
-    const meetingLink = document.getElementById("meet-link").value.trim();
+    calendarModalMode = 'EDIT_MEETING';
+    calendarModalType = 'MEETING';
 
-    if (new Date(startVal) >= new Date(endVal)) {
-        alert("Thời gian kết thúc cuộc họp phải diễn ra sau thời gian bắt đầu!");
-        return;
+    document.getElementById("cal-modal-title").textContent = "Chỉnh sửa cuộc họp";
+    document.getElementById("cal-modal-subtitle").textContent = "Cập nhật thời gian hoặc nội dung cuộc họp";
+    document.getElementById("cal-type-switcher").classList.add("hidden");
+    document.getElementById("cal-submit-btn").innerHTML = '<i class="fa-solid fa-check mr-1.5"></i> Cập nhật cuộc họp';
+
+    populateCalendarWorkspaceSelect(currentMeetingData.workspace_id);
+
+    document.getElementById("meet-title").value = currentMeetingData.title;
+    document.getElementById("meet-desc").value = currentMeetingData.description;
+    document.getElementById("meet-link").value = currentMeetingData.meeting_link;
+
+    if (currentMeetingData.start) {
+        document.getElementById("meet-start").value = formatDateTimeLocal(new Date(currentMeetingData.start));
+    }
+    if (currentMeetingData.end) {
+        document.getElementById("meet-end").value = formatDateTimeLocal(new Date(currentMeetingData.end));
     }
 
-    const payload = {
-        title,
-        description: description || null,
-        start_time: new Date(startVal).toISOString(),
-        end_time: new Date(endVal).toISOString(),
-        meeting_link: meetingLink || null
-    };
-
-    const res = await apiCall(`/workspaces/${currentWorkspaceId}/meetings`, "POST", payload);
-    if (res) {
-        closeModal("create-meeting-modal");
-        document.getElementById("meet-title").value = "";
-        document.getElementById("meet-desc").value = "";
-        document.getElementById("meet-link").value = "";
-        if (calendarInstance) calendarInstance.refetchEvents();
-    }
+    switchCalendarModalTab('MEETING');
+    openModal("create-meeting-modal");
 }
 
 async function handleDeleteMeeting() {
@@ -896,7 +1347,9 @@ async function handleDeleteMeeting() {
     const res = await apiCall(`/meetings/${currentMeetingId}`, "DELETE");
     if (res) {
         closeModal("meeting-detail-modal");
+        showToast("Đã hủy cuộc họp thành công!");
         if (calendarInstance) calendarInstance.refetchEvents();
+        loadRecentActivitiesWidget();
     }
 }
 

@@ -63,33 +63,127 @@ body {
 /* FullCalendar Customizations */
 .fc {
     font-family: inherit;
+    --fc-border-color: #e2e8f0;
+    --fc-today-bg-color: #eff6ff;
 }
 .fc-toolbar-title {
-    font-size: 1.25rem !important;
+    font-size: 1.15rem !important;
     font-weight: 800 !important;
     color: #0f172a;
 }
 .fc .fc-button-primary {
-    background-color: #2563eb !important;
-    border-color: #2563eb !important;
+    background-color: #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
     border-radius: 0.75rem !important;
     font-weight: 700 !important;
-    font-size: 0.85rem !important;
+    font-size: 0.8rem !important;
     padding: 0.4rem 0.8rem !important;
     text-transform: capitalize;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.15s ease;
 }
 .fc .fc-button-primary:hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+}
+.fc .fc-button-primary:focus {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+}
+.fc .fc-button-active {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+}
+.fc .fc-button-active:hover {
     background-color: #1d4ed8 !important;
-    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
 }
 .fc-event {
-    cursor: pointer;
-    border-radius: 6px !important;
-    padding: 3px 6px !important;
+    cursor: grab !important;
+    border-radius: 8px !important;
+    padding: 2px 4px !important;
     font-size: 0.75rem !important;
     font-weight: 600 !important;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: none !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.fc-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.fc-event:active {
+    cursor: grabbing !important;
 }
 .fc-daygrid-day:hover {
     background-color: #f8fafc;
+}
+
+/* Google Calendar Selection Highlight */
+.fc-highlight {
+    background: rgba(37, 99, 235, 0.2) !important;
+    border: 1px dashed #2563eb !important;
+    border-radius: 6px;
+}
+
+/* Google Calendar Current Time Red Line Indicator */
+.fc .fc-timegrid-now-indicator-line {
+    border-color: #ef4444 !important;
+    border-width: 2px !important;
+    z-index: 10;
+}
+.fc .fc-timegrid-now-indicator-arrow {
+    border-color: #ef4444 !important;
+    border-width: 5px 0 5px 6px !important;
+    border-top-color: transparent !important;
+    border-bottom-color: transparent !important;
+}
+
+/* Week and Day Grid Slot Styling */
+.fc-timegrid-slot {
+    height: 38px !important;
+    border-bottom: 1px dotted #e2e8f0 !important;
+}
+.fc-timegrid-slot-label {
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+}
+.fc-col-header-cell {
+    padding: 8px 0 !important;
+    background-color: #f8fafc;
+}
+.fc-col-header-cell-cushion {
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    font-size: 0.8rem !important;
+    text-decoration: none !important;
+}
+
+/* Floating Toast Notifications */
+#toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+.toast-item {
+    pointer-events: auto;
+    animation: toastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes toastSlideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }

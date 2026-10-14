@@ -378,18 +378,47 @@
                 </div>
 
 
-                <!-- VIEW 2: CALENDAR & MEETINGS (KHI CHỌN CALENDAR Ở SIDEBAR) -->
+                <!-- VIEW 2: CALENDAR & MEETINGS (GOOGLE CALENDAR STYLE) -->
                 <div id="view-calendar" class="hidden bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
-                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                    <!-- Google Calendar Top Bar -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                         <div>
-                            <h3 class="text-lg font-extrabold text-slate-900">Project Calendar & Meetings</h3>
-                            <p class="text-xs text-slate-500">Click vào bất kỳ ngày nào trên lịch để đặt lịch họp trực tiếp!</p>
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shadow-sm">
+                                    <i class="fa-regular fa-calendar-days text-base"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-extrabold text-slate-900 leading-tight">Lịch dự án & Cuộc họp</h3>
+                                    <p class="text-xs text-slate-500">Google Calendar: Nhấp hoặc kéo chọn giờ trên lịch tuần/tháng để tạo lịch. Kéo thả để dời lịch.</p>
+                                </div>
+                            </div>
                         </div>
-                        <button onclick="openModal('create-meeting-modal')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-200 flex items-center gap-2 transition">
-                            <i class="fa-solid fa-video text-xs"></i> Add Meeting
-                        </button>
+
+                        <!-- Filter Pills & Create Button -->
+                        <div class="flex items-center flex-wrap gap-2.5">
+                            <div class="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 text-xs font-bold text-slate-600">
+                                <button id="cal-filter-all" onclick="setCalendarFilter('ALL')" class="px-3 py-1.5 rounded-xl bg-white text-blue-600 shadow-sm transition">Tất cả</button>
+                                <button id="cal-filter-meetings" onclick="setCalendarFilter('MEETING')" class="px-3 py-1.5 rounded-xl hover:text-slate-900 transition">🎥 Cuộc họp</button>
+                                <button id="cal-filter-tasks" onclick="setCalendarFilter('TASK_DEADLINE')" class="px-3 py-1.5 rounded-xl hover:text-slate-900 transition">📌 Hạn chót</button>
+                            </div>
+
+                            <button onclick="openCreateCalendarEventModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 flex items-center gap-2 transition">
+                                <i class="fa-solid fa-plus text-xs"></i> Tạo lịch mới
+                            </button>
+                        </div>
                     </div>
-                    <div id="calendar-container" class="min-h-[600px] pt-2"></div>
+
+                    <!-- Usage Tips Bar -->
+                    <div class="flex items-center justify-between bg-blue-50/70 border border-blue-100/80 rounded-2xl px-4 py-2.5 text-xs text-blue-900">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-regular fa-lightbulb text-blue-600 text-sm"></i>
+                            <span><b>Mẹo Google Calendar:</b> Chuyển sang xem <b>Tuần (Week)</b> để kéo chọn giờ chính xác, kéo thả sự kiện để dời lịch hoặc kéo mép dưới sự kiện để đổi thời lượng!</span>
+                        </div>
+                        <span class="text-[11px] font-bold text-blue-600 bg-white px-2.5 py-0.5 rounded-full shadow-xs shrink-0 hidden lg:inline-block">FullCalendar 6 Interactive</span>
+                    </div>
+
+                    <!-- Calendar Body -->
+                    <div id="calendar-container" class="min-h-[650px] pt-1"></div>
                 </div>
 
 
@@ -597,39 +626,125 @@
     </div>
 
 
-    <!-- MODAL 3: TẠO CUỘC HỌP -->
+    <!-- MODAL 3: TẠO SỰ KIỆN / CUỘC HỌP (GOOGLE CALENDAR STYLE) -->
     <div id="create-meeting-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
-        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl border border-slate-100">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold text-lg text-slate-900">Schedule Meeting</h3>
-                <button onclick="closeModal('create-meeting-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div id="cal-modal-icon" class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-base font-bold shadow-sm">
+                        <i class="fa-regular fa-calendar-plus"></i>
+                    </div>
+                    <div>
+                        <h3 id="cal-modal-title" class="font-extrabold text-base text-slate-900 leading-tight">Lên lịch sự kiện mới</h3>
+                        <p id="cal-modal-subtitle" class="text-[11px] text-slate-400">Google Calendar: Chọn giờ và lưu trực tiếp</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('create-meeting-modal')" class="text-slate-400 hover:text-slate-600 p-1 rounded-xl transition"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <form onsubmit="handleCreateMeeting(event)" class="space-y-4">
+
+            <!-- Tab Switcher: Cuộc họp vs Công việc -->
+            <div id="cal-type-switcher" class="flex p-1 bg-slate-100 rounded-2xl mb-4">
+                <button type="button" id="tab-cal-meeting" onclick="switchCalendarModalTab('MEETING')" class="flex-1 py-2 text-xs font-bold rounded-xl bg-white text-emerald-700 shadow-sm flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-video text-xs"></i> 📅 Cuộc họp (Meeting)
+                </button>
+                <button type="button" id="tab-cal-task" onclick="switchCalendarModalTab('TASK')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-thumbtack text-xs"></i> 📌 Hạn chót Task
+                </button>
+            </div>
+
+            <form onsubmit="handleCalendarEventSubmit(event)" class="space-y-4">
+                <!-- Tiêu đề lịch -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Meeting Title *</label>
-                    <input type="text" id="meet-title" required placeholder="e.g. Sprint Review Meeting" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600">
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tiêu đề *</label>
+                    <input type="text" id="meet-title" required placeholder="Thêm tiêu đề (VD: Sprint Planning, Review UI...)" class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
                 </div>
+
+                <!-- Dự án / Workspace -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Description</label>
-                    <textarea id="meet-desc" rows="2" placeholder="Agenda..." class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"></textarea>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Dự án / Workspace *</label>
+                    <select id="cal-modal-workspace" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium"></select>
                 </div>
+
+                <!-- Thời gian bắt đầu & kết thúc -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Start Time *</label>
-                        <input type="datetime-local" id="meet-start" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Bắt đầu *</label>
+                        <input type="datetime-local" id="meet-start" required onchange="onCalendarStartTimeChange()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">End Time *</label>
-                        <input type="datetime-local" id="meet-end" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kết thúc *</label>
+                        <input type="datetime-local" id="meet-end" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Meeting Link</label>
-                    <input type="url" id="meet-link" placeholder="Leave empty for auto Jitsi Meet link" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600">
+
+                <!-- Quick Duration Chips -->
+                <div id="cal-duration-chips" class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span class="text-[11px] font-bold text-slate-400 mr-1">Thời lượng:</span>
+                    <button type="button" onclick="setQuickDuration(15)" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg text-[11px] font-bold transition">+15p</button>
+                    <button type="button" onclick="setQuickDuration(30)" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg text-[11px] font-bold transition">+30p</button>
+                    <button type="button" onclick="setQuickDuration(45)" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg text-[11px] font-bold transition">+45p</button>
+                    <button type="button" onclick="setQuickDuration(60)" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg text-[11px] font-bold transition">+1 giờ</button>
+                    <button type="button" onclick="setQuickDuration(120)" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg text-[11px] font-bold transition">+2 giờ</button>
                 </div>
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeModal('create-meeting-modal')" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
-                    <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition">Schedule</button>
+
+                <!-- PHẦN THÔNG TIN CHO CUỘC HỌP (MEETING) -->
+                <div id="cal-fields-meeting" class="space-y-3 pt-2 border-t border-slate-100">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-slate-600 uppercase">Link họp trực tuyến</label>
+                            <button type="button" onclick="generateAutoJitsiLink()" class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Tự sinh link Jitsi Meet
+                            </button>
+                        </div>
+                        <input type="url" id="meet-link" placeholder="Để trống hệ thống sẽ tự sinh link Jitsi Meet miễn phí..." class="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nội dung / Agenda</label>
+                        <textarea id="meet-desc" rows="2" placeholder="Ghi chú nội dung cuộc họp..." class="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"></textarea>
+                    </div>
+                </div>
+
+                <!-- PHẦN THÔNG TIN CHO TASK -->
+                <div id="cal-fields-task" class="hidden space-y-3 pt-2 border-t border-slate-100">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mức ưu tiên</label>
+                            <select id="cal-task-priority" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-semibold">
+                                <option value="LOW">Low (Thấp)</option>
+                                <option value="MEDIUM" selected>Medium (Vừa)</option>
+                                <option value="HIGH">High (Cao)</option>
+                                <option value="URGENT">Urgent (Khẩn cấp)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Trạng thái</label>
+                            <select id="cal-task-status" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-semibold">
+                                <option value="TODO" selected>To Do</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="REVIEW">Review</option>
+                                <option value="DONE">Done</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Người thực hiện</label>
+                        <select id="cal-task-assignee" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                            <option value="">-- Chưa gán cho ai --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mô tả công việc</label>
+                        <textarea id="cal-task-desc" rows="2" placeholder="Chi tiết yêu cầu công việc..." class="w-full border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"></textarea>
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('create-meeting-modal')" class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">Hủy</button>
+                    <button type="submit" id="cal-submit-btn" class="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-200 transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-calendar-check"></i> Lưu vào lịch
+                    </button>
                 </div>
             </form>
         </div>
@@ -640,21 +755,26 @@
     <div id="meeting-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
             <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase">Meeting</span>
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase">Cuộc họp</span>
                 <button onclick="closeModal('meeting-detail-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <h3 id="md-title" class="text-xl font-bold text-slate-900 mb-2">Meeting Title</h3>
+            <h3 id="md-title" class="text-xl font-extrabold text-slate-900 mb-2">Meeting Title</h3>
             <p id="md-desc" class="text-sm text-slate-600 mb-4 whitespace-pre-line">Description</p>
-            <div class="bg-slate-50 p-4 rounded-xl space-y-2 text-xs text-slate-600 mb-5">
-                <div><i class="fa-regular fa-clock w-4 text-slate-400"></i> Time: <span id="md-time" class="font-bold text-slate-800">10:00 - 11:00</span></div>
-                <div><i class="fa-regular fa-user w-4 text-slate-400"></i> Host: <span id="md-creator" class="font-bold text-slate-800">admin</span></div>
+            <div class="bg-slate-50 p-4 rounded-2xl space-y-2 text-xs text-slate-600 mb-5 border border-slate-100">
+                <div><i class="fa-regular fa-clock w-4 text-slate-400"></i> Thời gian: <span id="md-time" class="font-bold text-slate-800">10:00 - 11:00</span></div>
+                <div><i class="fa-regular fa-user w-4 text-slate-400"></i> Người tạo: <span id="md-creator" class="font-bold text-slate-800">admin</span></div>
             </div>
-            <div class="flex items-center justify-between gap-3">
-                <button id="md-delete-btn" onclick="handleDeleteMeeting()" class="text-rose-600 hover:text-rose-800 text-xs font-bold py-2 px-3 hover:bg-rose-50 rounded-xl transition">
-                    <i class="fa-regular fa-trash-can mr-1"></i> Cancel Meeting
-                </button>
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1">
+                    <button id="md-delete-btn" onclick="handleDeleteMeeting()" class="text-rose-600 hover:text-rose-800 text-xs font-bold py-2 px-3 hover:bg-rose-50 rounded-xl transition">
+                        <i class="fa-regular fa-trash-can mr-1"></i> Hủy họp
+                    </button>
+                    <button id="md-edit-btn" onclick="openEditMeetingModal()" class="text-blue-600 hover:text-blue-800 text-xs font-bold py-2 px-3 hover:bg-blue-50 rounded-xl transition">
+                        <i class="fa-regular fa-pen-to-square mr-1"></i> Sửa
+                    </button>
+                </div>
                 <a id="md-join-btn" href="#" target="_blank" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-100 transition inline-flex items-center gap-2">
-                    <i class="fa-solid fa-video"></i> Join Now
+                    <i class="fa-solid fa-video"></i> Tham gia
                 </a>
             </div>
         </div>
@@ -705,6 +825,9 @@
             </form>
         </div>
     </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Main JavaScript Logic -->
     <script src="js/app.js"></script>
