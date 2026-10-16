@@ -461,8 +461,17 @@ function createTaskCardElement(task) {
         </div>
         <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400 font-medium">
             <span>${dateStr}</span>
-            <div class="w-5 h-5 rounded-full bg-slate-800 text-white font-bold text-[9px] flex items-center justify-center">
-                ${assigneeInitial}
+            <div class="flex items-center gap-1.5">
+                <select onclick="event.stopPropagation()" onchange="handleQuickTaskStatusChange(${task.id}, this.value, event)" class="text-[10px] font-bold py-0.5 px-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-400 focus:outline-none cursor-pointer">
+                    <option value="TODO" ${task.status === 'TODO' ? 'selected' : ''}>TODO</option>
+                    <option value="IN_PROGRESS" ${task.status === 'IN_PROGRESS' ? 'selected' : ''}>IN PROGRESS</option>
+                    <option value="REVIEW" ${task.status === 'REVIEW' ? 'selected' : ''}>REVIEW</option>
+                    <option value="DONE" ${task.status === 'DONE' ? 'selected' : ''}>DONE</option>
+                    <option value="CANCELLED" ${task.status === 'CANCELLED' ? 'selected' : ''}>CANCELLED</option>
+                </select>
+                <div class="w-5 h-5 rounded-full bg-slate-800 text-white font-bold text-[9px] flex items-center justify-center shrink-0" title="${task.assignee ? task.assignee.username : 'Chưa gán'}">
+                    ${assigneeInitial}
+                </div>
             </div>
         </div>
     `;
@@ -587,7 +596,18 @@ async function openTaskDetail(taskId) {
     document.getElementById("modal-task-id").textContent = `#${task.id}`;
     document.getElementById("modal-task-title").textContent = task.title;
     document.getElementById("modal-task-desc").textContent = task.description || "No description provided.";
-    document.getElementById("modal-task-status").textContent = task.status;
+    
+    // Đồng bộ select trạng thái và pills
+    const statusSelect = document.getElementById("modal-task-status-select");
+    if (statusSelect) {
+        statusSelect.value = task.status;
+    }
+    const legacyStatusEl = document.getElementById("modal-task-status");
+    if (legacyStatusEl) {
+        legacyStatusEl.textContent = task.status;
+    }
+    updateModalStatusPills(task.status);
+
     document.getElementById("modal-task-priority").textContent = task.priority;
 
     if (task.due_date) {
@@ -604,6 +624,86 @@ async function openTaskDetail(taskId) {
     loadTaskComments(taskId);
     loadTaskActivities(taskId);
     openModal("task-detail-modal");
+}
+
+function updateModalStatusPills(currentStatus) {
+    const statuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'CANCELLED'];
+    statuses.forEach(st => {
+        const pill = document.getElementById(`pill-${st}`);
+        if (!pill) return;
+        if (st === currentStatus) {
+            pill.classList.add('ring-2', 'ring-blue-600', 'shadow-xs', 'font-black');
+            pill.style.opacity = '1';
+        } else {
+            pill.classList.remove('ring-2', 'ring-blue-600', 'shadow-xs', 'font-black');
+            pill.style.opacity = '0.65';
+        }
+    });
+}
+
+// Xử lý đổi trạng thái task từ bên trong Modal chi tiết
+async function handleModalTaskStatusChange(newStatus) {
+    if (!currentTaskId) return;
+    try {
+        const res = await apiCall(`/tasks/${currentTaskId}`, "PUT", { status: newStatus });
+        if (res) {
+            const statusSelect = document.getElementById("modal-task-status-select");
+            if (statusSelect) statusSelect.value = newStatus;
+            updateModalStatusPills(newStatus);
+            showToast(`Đã chuyển trạng thái sang ${newStatus}`);
+
+            // Cập nhật lại board, widget, timeline và lịch
+            if (currentWorkspaceId) {
+                loadWorkspaceDetails();
+                loadRecentActivitiesWidget();
+            }
+            loadTaskActivities(currentTaskId);
+            if (calendarInstance) {
+                calendarInstance.refetchEvents();
+            }
+            loadMyTasksCount();
+            const myTasksTab = document.getElementById("tab-my-tasks");
+            if (myTasksTab && !myTasksTab.classList.contains("hidden")) {
+                loadMyTasks();
+            }
+        }
+    } catch (err) {
+        showToast("Lỗi khi cập nhật trạng thái: " + err.message, "error");
+    }
+}
+
+// Xử lý đổi trạng thái nhanh từ Kanban Board hoặc My Tasks
+async function handleQuickTaskStatusChange(taskId, newStatus, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    try {
+        const res = await apiCall(`/tasks/${taskId}`, "PUT", { status: newStatus });
+        if (res) {
+            showToast(`Đã chuyển task #${taskId} sang ${newStatus}`);
+            if (currentWorkspaceId) {
+                loadWorkspaceDetails();
+                loadRecentActivitiesWidget();
+            }
+            if (calendarInstance) {
+                calendarInstance.refetchEvents();
+            }
+            loadMyTasksCount();
+            const myTasksTab = document.getElementById("tab-my-tasks");
+            if (myTasksTab && !myTasksTab.classList.contains("hidden")) {
+                loadMyTasks();
+            }
+            // Nếu modal chi tiết của task này đang mở
+            if (currentTaskId == taskId) {
+                const statusSelect = document.getElementById("modal-task-status-select");
+                if (statusSelect) statusSelect.value = newStatus;
+                updateModalStatusPills(newStatus);
+                loadTaskActivities(taskId);
+            }
+        }
+    } catch (err) {
+        showToast("Lỗi khi cập nhật trạng thái: " + err.message, "error");
+    }
 }
 
 function switchTaskDetailTab(subTab) {
@@ -1395,7 +1495,13 @@ async function loadMyTasks() {
                 <p class="text-xs text-slate-400 mt-0.5">Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleDateString('vi-VN') : 'Không hạn'}</p>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">${t.status}</span>
+                <select onclick="event.stopPropagation()" onchange="handleQuickTaskStatusChange(${t.id}, this.value, event)" class="text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-xs focus:outline-none hover:border-blue-400 cursor-pointer">
+                    <option value="TODO" ${t.status === 'TODO' ? 'selected' : ''}>To Do</option>
+                    <option value="IN_PROGRESS" ${t.status === 'IN_PROGRESS' ? 'selected' : ''}>In Progress</option>
+                    <option value="REVIEW" ${t.status === 'REVIEW' ? 'selected' : ''}>Review</option>
+                    <option value="DONE" ${t.status === 'DONE' ? 'selected' : ''}>Done</option>
+                    <option value="CANCELLED" ${t.status === 'CANCELLED' ? 'selected' : ''}>Cancelled</option>
+                </select>
             </div>
         `;
         container.appendChild(item);
