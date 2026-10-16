@@ -1031,13 +1031,14 @@ function initOrRefreshCalendar() {
                 const border = arg.event.borderColor || bg;
 
                 const el = document.createElement('div');
-                el.className = 'fc-event-badge flex items-center gap-1.5 px-2 py-1 rounded-md text-white text-xs leading-tight w-full font-bold shadow-sm';
+                el.className = 'fc-event-badge flex items-center gap-1.5 px-2 py-1 rounded-md text-white text-xs leading-tight w-full max-w-full min-w-0 overflow-hidden font-bold shadow-xs';
                 el.style.backgroundColor = bg;
                 el.style.border = `1px solid ${border}`;
+                el.title = cleanTitle;
                 el.innerHTML = `
                     <i class="${iconClass} text-[10px] shrink-0 text-white/90"></i>
                     ${timeText}
-                    <span class="font-bold truncate text-white leading-tight drop-shadow-xs">${cleanTitle}</span>
+                    <span class="font-bold truncate min-w-0 flex-1 text-white leading-tight drop-shadow-xs">${cleanTitle}</span>
                 `;
                 return { domNodes: [el] };
             },

@@ -110,15 +110,31 @@ body {
 }
 
 /* Event solid blocks & reset transparent FullCalendar default */
+.fc-daygrid-day-frame {
+    overflow: hidden !important;
+}
+
+.fc-daygrid-day-events {
+    margin: 0 !important;
+    padding: 0 4px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
 .fc-daygrid-event-harness {
     margin: 2px 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
 }
 
 .fc-daygrid-event {
     background: transparent !important;
     border: none !important;
-    padding: 1px 2px !important;
+    padding: 1px 0 !important;
     margin: 1px 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    display: block !important;
 }
 
 .fc-daygrid-dot-event {
@@ -134,6 +150,15 @@ body {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+.fc-event-main {
+    padding: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
 }
 
 .fc-event:active {
@@ -141,6 +166,11 @@ body {
 }
 
 .fc-event-badge {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
     transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
 }
 
