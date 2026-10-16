@@ -180,6 +180,7 @@ function handleLogout() {
 function switchSidebarView(view) {
     activeSidebarView = view;
     const views = ["home", "calendar", "mytasks", "team", "activities"];
+    const targetDiv = (view === "projects") ? "home" : view;
 
     views.forEach(v => {
         const el = document.getElementById(`view-${v}`);
@@ -190,15 +191,26 @@ function switchSidebarView(view) {
         }
     });
 
-    const activeEl = document.getElementById(`view-${view}`);
+    const navProjects = document.getElementById("nav-projects");
+    if (navProjects) {
+        navProjects.className = "w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition";
+    }
+
+    const activeEl = document.getElementById(`view-${targetDiv}`);
     const activeBtn = document.getElementById(`nav-${view}`);
     if (activeEl) activeEl.classList.remove("hidden");
     if (activeBtn) {
         activeBtn.className = "w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-blue-50 text-blue-600 transition";
     }
 
-    if (view === "home") {
+    if (view === "home" || view === "projects") {
         loadWorkspaceDetails();
+        if (view === "projects") {
+            setTimeout(() => {
+                const el = document.getElementById("projects-grid-container");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 60);
+        }
     } else if (view === "calendar") {
         initOrRefreshCalendar();
         setTimeout(() => {
