@@ -852,6 +852,7 @@ function initOrRefreshCalendar() {
             slotMaxTime: '23:00:00',
             slotDuration: '00:30:00',
             dayMaxEvents: 4,
+            eventDisplay: 'block', // Luôn hiển thị dạng thẻ khối đặc (solid block) cho mọi sự kiện
 
             // SỰ KIỆN 1: Click hoặc kéo chọn ô giờ trên lịch tuần/tháng (Google Calendar Quick Create)
             select: function(selectionInfo) {
@@ -880,7 +881,8 @@ function initOrRefreshCalendar() {
                         if (!isMeeting) {
                             if (e.task_priority === 'URGENT') { bg = '#dc2626'; border = '#b91c1c'; }
                             else if (e.task_priority === 'HIGH') { bg = '#ea580c'; border = '#c2410c'; }
-                            else if (e.task_priority === 'LOW') { bg = '#16a34a'; border = '#15803d'; }
+                            else if (e.task_priority === 'MEDIUM') { bg = '#2563eb'; border = '#1d4ed8'; }
+                            else if (e.task_priority === 'LOW') { bg = '#0284c7'; border = '#0369a1'; }
                         }
 
                         return {
@@ -901,7 +903,7 @@ function initOrRefreshCalendar() {
                 }
             },
 
-            // Render giao diện thẻ sự kiện đẹp mắt với icon
+            // Render giao diện thẻ sự kiện đẹp mắt với icon và màu nền đặc rõ ràng
             eventContent: function(arg) {
                 const props = arg.event.extendedProps;
                 const isMeeting = (props.event_type === 'MEETING');
@@ -909,14 +911,21 @@ function initOrRefreshCalendar() {
                 const cleanTitle = isMeeting 
                     ? arg.event.title.replace('📅 [Họp] ', '') 
                     : arg.event.title.replace('📌 [Hạn chót] ', '');
-                const timeText = arg.timeText ? `<span class="opacity-80 text-[10px] mr-1">${arg.timeText}</span>` : '';
+                
+                const timeText = arg.timeText 
+                    ? `<span class="bg-black/20 text-white/95 px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0 mr-1">${arg.timeText}</span>` 
+                    : '';
+                const bg = arg.event.backgroundColor || (isMeeting ? '#059669' : '#2563eb');
+                const border = arg.event.borderColor || bg;
 
                 const el = document.createElement('div');
-                el.className = 'flex items-center gap-1.5 px-1.5 py-0.5 truncate w-full text-white text-xs leading-tight';
+                el.className = 'fc-event-badge flex items-center gap-1.5 px-2 py-1 rounded-md text-white text-xs leading-tight w-full font-bold shadow-sm';
+                el.style.backgroundColor = bg;
+                el.style.border = `1px solid ${border}`;
                 el.innerHTML = `
-                    <i class="${iconClass} text-[10px] shrink-0"></i>
+                    <i class="${iconClass} text-[10px] shrink-0 text-white/90"></i>
                     ${timeText}
-                    <span class="font-bold truncate">${cleanTitle}</span>
+                    <span class="font-bold truncate text-white leading-tight drop-shadow-xs">${cleanTitle}</span>
                 `;
                 return { domNodes: [el] };
             },

@@ -64,13 +64,16 @@ body {
 .fc {
     font-family: inherit;
     --fc-border-color: #e2e8f0;
-    --fc-today-bg-color: #eff6ff;
+    --fc-today-bg-color: #f0f7ff;
 }
-.fc-toolbar-title {
-    font-size: 1.15rem !important;
+
+.fc .fc-toolbar-title {
+    font-size: 1.25rem !important;
     font-weight: 800 !important;
     color: #0f172a;
+    letter-spacing: -0.02em;
 }
+
 .fc .fc-button-primary {
     background-color: #ffffff !important;
     color: #334155 !important;
@@ -78,47 +81,140 @@ body {
     border-radius: 0.75rem !important;
     font-weight: 700 !important;
     font-size: 0.8rem !important;
-    padding: 0.4rem 0.8rem !important;
+    padding: 0.45rem 0.9rem !important;
     text-transform: capitalize;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     transition: all 0.15s ease;
 }
+
 .fc .fc-button-primary:hover {
     background-color: #f1f5f9 !important;
     color: #0f172a !important;
     border-color: #94a3b8 !important;
 }
+
 .fc .fc-button-primary:focus {
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
 }
+
 .fc .fc-button-active {
     background-color: #2563eb !important;
     color: #ffffff !important;
     border-color: #2563eb !important;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25) !important;
 }
+
 .fc .fc-button-active:hover {
     background-color: #1d4ed8 !important;
     color: #ffffff !important;
 }
+
+/* Event solid blocks & reset transparent FullCalendar default */
+.fc-daygrid-event-harness {
+    margin: 2px 0 !important;
+}
+
+.fc-daygrid-event {
+    background: transparent !important;
+    border: none !important;
+    padding: 1px 2px !important;
+    margin: 1px 0 !important;
+}
+
+.fc-daygrid-dot-event {
+    background: transparent !important;
+}
+
+.fc-daygrid-dot-event:hover {
+    background: transparent !important;
+}
+
 .fc-event {
     cursor: grab !important;
-    border-radius: 8px !important;
-    padding: 2px 4px !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
     border: none !important;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    background: transparent !important;
+    box-shadow: none !important;
 }
-.fc-event:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
+
 .fc-event:active {
     cursor: grabbing !important;
 }
+
+.fc-event-badge {
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+.fc-event-badge:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Day cell number styling */
+.fc-daygrid-day-top {
+    padding: 6px 8px !important;
+    flex-direction: row !important;
+}
+
+.fc-daygrid-day-number {
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    color: #334155 !important;
+    text-decoration: none !important;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    transition: all 0.15s ease;
+}
+
+/* Today's cell and circular badge */
+.fc-day-today {
+    background-color: #f0f7ff !important;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* Days from other months (lighter gray) */
+.fc-day-other .fc-daygrid-day-number {
+    color: #94a3b8 !important;
+    opacity: 0.55;
+}
+
+.fc-day-other {
+    background-color: #fafbfc;
+}
+
 .fc-daygrid-day:hover {
     background-color: #f8fafc;
+}
+
+/* Column Header Weekdays (Thứ 2 - CN) */
+.fc-col-header {
+    background-color: #f1f5f9;
+    border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.fc-col-header-cell {
+    padding: 10px 0 !important;
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+}
+
+.fc-col-header-cell-cushion {
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    font-size: 0.8rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-decoration: none !important;
 }
 
 /* Google Calendar Selection Highlight */
@@ -150,16 +246,6 @@ body {
     font-size: 0.7rem !important;
     font-weight: 700 !important;
     color: #64748b !important;
-}
-.fc-col-header-cell {
-    padding: 8px 0 !important;
-    background-color: #f8fafc;
-}
-.fc-col-header-cell-cushion {
-    font-weight: 800 !important;
-    color: #1e293b !important;
-    font-size: 0.8rem !important;
-    text-decoration: none !important;
 }
 
 /* Floating Toast Notifications */
