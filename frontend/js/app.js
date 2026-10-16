@@ -201,6 +201,9 @@ function switchSidebarView(view) {
         loadWorkspaceDetails();
     } else if (view === "calendar") {
         initOrRefreshCalendar();
+        setTimeout(() => {
+            if (calendarInstance) calendarInstance.updateSize();
+        }, 60);
     } else if (view === "mytasks") {
         loadMyTasks();
     } else if (view === "team") {
@@ -319,6 +322,9 @@ function selectWorkspace(wsId) {
     renderProjectCards(allWorkspaces);
     renderProjectDropdownMenu(allWorkspaces);
     loadWorkspaceDetails();
+    if (calendarInstance) {
+        calendarInstance.refetchEvents();
+    }
 }
 
 async function loadWorkspaceDetails() {
@@ -858,7 +864,7 @@ function initOrRefreshCalendar() {
                     successCallback([]);
                     return;
                 }
-                const url = `/workspaces/${currentWorkspaceId}/calendar-events?from_date=${info.startStr}&to_date=${info.endStr}`;
+                const url = `/workspaces/${currentWorkspaceId}/calendar-events?from_date=${encodeURIComponent(info.startStr)}&to_date=${encodeURIComponent(info.endStr)}`;
                 const eventsData = await apiCall(url, "GET");
                 if (eventsData) {
                     let filtered = eventsData;
@@ -937,8 +943,14 @@ function initOrRefreshCalendar() {
             }
         });
         calendarInstance.render();
+        setTimeout(() => {
+            if (calendarInstance) calendarInstance.updateSize();
+        }, 50);
     } else {
         calendarInstance.refetchEvents();
+        setTimeout(() => {
+            if (calendarInstance) calendarInstance.updateSize();
+        }, 50);
     }
 }
 
@@ -1298,7 +1310,7 @@ function openMeetingDetail(event) {
 
     document.getElementById("md-title").textContent = currentMeetingData.title;
     document.getElementById("md-desc").textContent = props.description || "Không có nội dung mô tả.";
-    document.getElementById("md-creator").textContent = props.creator ? props.creator.username : "Thành viên";
+    document.getElementById("md-creator").textContent = props.creator_name || (props.creator ? props.creator.username : "Thành viên");
 
     const startStr = new Date(event.start).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
     const endStr = event.end ? new Date(event.end).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';

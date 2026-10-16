@@ -216,6 +216,8 @@ class CalendarEventResponse(BaseModel):
     task_status: Optional[str] = None
     task_priority: Optional[str] = None
     assignee_name: Optional[str] = None
+    creator_name: Optional[str] = None
+    workspace_id: Optional[int] = None
 
     class Config:
         from_attributes = True
