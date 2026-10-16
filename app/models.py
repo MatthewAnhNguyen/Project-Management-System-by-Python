@@ -1,8 +1,14 @@
+import secrets
+import string
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
 from .database import Base
 from sqlalchemy.orm import relationship
 
+def generate_random_id(length: int = 12) -> str:
+    # Sinh ngẫu nhiên chuỗi gồm chữ cái và chữ số (12 ký tự)
+    chars = string.ascii_letters + string.digits
+    return "".join(secrets.choice(chars) for _ in range(length))
 
 class User(Base):
     __tablename__ = "users"  # Tên bảng trong MySQL
@@ -23,7 +29,7 @@ class User(Base):
 class Workspace(Base):
     __tablename__ = "workspaces"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(50), primary_key=True, default=generate_random_id, index=True)
     name = Column(String(100), nullable=False)
     description = Column(String(255), nullable=True)  # Có thể để trống
 
@@ -45,7 +51,7 @@ class WorkspaceMember(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # THÊM ondelete="CASCADE" vào đây
-    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     role = Column(String(20), default="MEMBER")
@@ -67,7 +73,7 @@ class Task(Base):
     due_date = Column(DateTime(timezone=True), nullable=True)
 
     # Khóa ngoại liên kết Workspace và Users
-    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     assignee_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
@@ -123,7 +129,7 @@ class Meeting(Base):
     end_time = Column(DateTime(timezone=True), nullable=False) # Thời gian kết thúc
 
     # Khóa ngoại
-    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), nullable = True)
     #Cuộc họp này có gắn với Task cụ thể nào không (optional)
@@ -137,7 +143,7 @@ class Meeting(Base):
 class WorkspaceActivity(Base):
     __tablename__ = "workspace_activities"
     id = Column(Integer, primary_key=True, index=True)
-    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     action_type = Column(String(50), nullable=False)
     description = Column(String(255), nullable=False)

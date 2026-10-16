@@ -13,7 +13,7 @@ router = APIRouter(prefix="/workspaces", tags=["Workspaces & Members"])
 
 # Helper
 def log_workspace_activity(
-        workspace_id: int,
+        workspace_id: str,
         user_id: int,
         action_type: str,
         description: str,

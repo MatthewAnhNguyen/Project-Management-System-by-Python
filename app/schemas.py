@@ -44,7 +44,7 @@ class WorkspaceCreate(BaseModel):
 
 # Dữ liệu trả về cho client
 class WorkspaceResponse(BaseModel):
-    id: int
+    id: str
     name: str
     description: Optional[str]
     owner_id: int
@@ -60,7 +60,7 @@ class WorkspaceMemberCreate(BaseModel):
 # Dữ liệu trả về
 class WorkspaceMemberResponse(BaseModel):
     id: int
-    workspace_id: int
+    workspace_id: str
     user_id: int
     role: str
     joined_at: datetime
@@ -101,7 +101,7 @@ class TaskResponse(BaseModel):
     status: str
     priority: str
     due_date: Optional[datetime]
-    workspace_id: int
+    workspace_id: str
     creator_id: int
     assignee_id: Optional[int]
     created_at: datetime
@@ -183,7 +183,7 @@ class MeetingResponse(BaseModel):
     meeting_link: Optional[str]
     start_time: datetime
     end_time: datetime
-    workspace_id: int
+    workspace_id: str
     creator_id: int
     task_id: Optional[int]
     created_at: datetime
@@ -194,7 +194,7 @@ class MeetingResponse(BaseModel):
 
 class WorkspaceActivityResponse(BaseModel):
     id: int
-    workspace_id: int
+    workspace_id: str
     user_id: Optional[int] = None
     action_type: str
     description: str
@@ -217,7 +217,7 @@ class CalendarEventResponse(BaseModel):
     task_priority: Optional[str] = None
     assignee_name: Optional[str] = None
     creator_name: Optional[str] = None
-    workspace_id: Optional[int] = None
+    workspace_id: Optional[str] = None
 
     class Config:
         from_attributes = True
