@@ -885,11 +885,86 @@ async function handleJoinWorkspace(e) {
 
     const res = await apiCall(`/workspaces/${wsId}/join`, "POST");
     if (res) {
-        alert("Tham gia Workspace thành công!");
+        showToast("Tham gia Workspace thành công!");
         closeModal("join-workspace-modal");
         document.getElementById("join-ws-id").value = "";
         currentWorkspaceId = wsId;
         loadWorkspaces();
+    }
+}
+
+// Sửa Workspace
+function openEditWorkspaceModal() {
+    if (!currentWorkspaceId) return;
+    const ws = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    if (!ws) return;
+    document.getElementById("edit-ws-name").value = ws.name || "";
+    document.getElementById("edit-ws-desc").value = ws.description || "";
+    openModal("edit-workspace-modal");
+}
+
+async function handleUpdateWorkspace(e) {
+    e.preventDefault();
+    if (!currentWorkspaceId) return;
+    const name = document.getElementById("edit-ws-name").value.trim();
+    const description = document.getElementById("edit-ws-desc").value.trim();
+    if (!name) return;
+
+    const res = await apiCall(`/workspaces/${currentWorkspaceId}`, "PUT", { name, description });
+    if (res) {
+        closeModal("edit-workspace-modal");
+        showToast("Đã cập nhật thông tin Workspace!");
+        await loadWorkspaces();
+    }
+}
+
+// Xóa Workspace
+async function handleDeleteWorkspace() {
+    if (!currentWorkspaceId) return;
+    const ws = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const wsName = ws ? ws.name : `#${currentWorkspaceId}`;
+    if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Workspace "${wsName}"?\nLưu ý: Mọi công việc, cuộc họp và hoạt động của dự án này sẽ bị xóa bỏ!`)) {
+        return;
+    }
+
+    const res = await apiCall(`/workspaces/${currentWorkspaceId}`, "DELETE");
+    if (res) {
+        showToast(`Đã xóa Workspace "${wsName}" thành công!`);
+        currentWorkspaceId = null;
+        await loadWorkspaces();
+    }
+}
+
+// Đổi mật khẩu
+async function handleChangePassword(e) {
+    e.preventDefault();
+    const oldPassword = document.getElementById("cp-old-password").value;
+    const newPassword = document.getElementById("cp-new-password").value;
+    const confirmPassword = document.getElementById("cp-confirm-password").value;
+
+    if (newPassword.length < 6) {
+        alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        alert("Mật khẩu xác nhận không khớp!");
+        return;
+    }
+    if (oldPassword === newPassword) {
+        alert("Mật khẩu mới không được trùng với mật khẩu cũ!");
+        return;
+    }
+
+    const res = await apiCall("/users/me/password", "PUT", {
+        old_password: oldPassword,
+        new_password: newPassword
+    });
+    if (res) {
+        closeModal("change-password-modal");
+        document.getElementById("cp-old-password").value = "";
+        document.getElementById("cp-new-password").value = "";
+        document.getElementById("cp-confirm-password").value = "";
+        showToast("Đổi mật khẩu thành công!");
     }
 }
 

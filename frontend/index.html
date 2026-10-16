@@ -164,6 +164,10 @@
                 <i class="fa-solid fa-book w-4 text-slate-400"></i>
                 <span>API Swagger Docs</span>
             </a>
+            <button onclick="openModal('change-password-modal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-blue-600 transition">
+                <i class="fa-solid fa-key w-4 text-slate-400"></i>
+                <span>Đổi mật khẩu</span>
+            </button>
             <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-rose-600 transition">
                 <i class="fa-solid fa-arrow-right-from-bracket w-4 text-slate-400"></i>
                 <span>Logout</span>
@@ -299,13 +303,19 @@
                                 <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
                                     <i class="fa-solid fa-table-cells-large"></i>
                                 </div>
-                                <div class="relative">
+                                <div class="relative flex items-center gap-1.5">
                                     <button onclick="toggleProjectSelectMenu()" class="flex items-center gap-2 text-base font-extrabold text-slate-900 hover:text-blue-600 transition">
                                         <span>Task Board — <span id="current-board-project-name">Exam Matrix System</span></span>
                                         <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
                                     </button>
+                                    <button onclick="openEditWorkspaceModal()" title="Sửa thông tin Workspace" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-slate-100 transition text-xs">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button onclick="handleDeleteWorkspace()" title="Xóa Workspace này" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition text-xs">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
                                     <!-- Dropdown menu ẩn hiện -->
-                                    <div id="project-dropdown-menu" class="hidden absolute left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-30">
+                                    <div id="project-dropdown-menu" class="hidden absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-30">
                                         <p class="text-[10px] font-bold text-slate-400 px-3 py-1.5 uppercase">Switch Project</p>
                                         <div id="project-dropdown-list" class="space-y-1"></div>
                                     </div>
@@ -853,6 +863,58 @@
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="closeModal('join-workspace-modal')" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
                     <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition">Join Now</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 7: CHỈNH SỬA WORKSPACE -->
+    <div id="edit-workspace-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-lg text-slate-900">Chỉnh sửa Project</h3>
+                <button onclick="closeModal('edit-workspace-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="handleUpdateWorkspace(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tên Project *</label>
+                    <input type="text" id="edit-ws-name" required placeholder="Tên dự án..." class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mô tả</label>
+                    <textarea id="edit-ws-desc" rows="3" placeholder="Mô tả dự án..." class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('edit-workspace-modal')" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Hủy</button>
+                    <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 8: ĐỔI MẬT KHẨU -->
+    <div id="change-password-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-lg text-slate-900">Đổi mật khẩu</h3>
+                <button onclick="closeModal('change-password-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="handleChangePassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mật khẩu hiện tại *</label>
+                    <input type="password" id="cp-old-password" required placeholder="Nhập mật khẩu hiện tại" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mật khẩu mới *</label>
+                    <input type="password" id="cp-new-password" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Xác nhận mật khẩu mới *</label>
+                    <input type="password" id="cp-confirm-password" required minlength="6" placeholder="Nhập lại mật khẩu mới" class="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('change-password-modal')" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Hủy</button>
+                    <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition">Cập nhật mật khẩu</button>
                 </div>
             </form>
         </div>
