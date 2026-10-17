@@ -46,9 +46,12 @@ class WorkspaceCreate(BaseModel):
 class WorkspaceResponse(BaseModel):
     id: str
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     owner_id: int
     created_at: datetime
+    total_tasks: Optional[int] = 0
+    done_tasks: Optional[int] = 0
+    completion_rate: Optional[float] = 0.0
 
     class Config:
         from_attributes = True
@@ -64,6 +67,7 @@ class WorkspaceMemberResponse(BaseModel):
     user_id: int
     role: str
     joined_at: datetime
+    user: Optional[UserSimpleResponse] = None
 
     class Config:
         from_attributes = True

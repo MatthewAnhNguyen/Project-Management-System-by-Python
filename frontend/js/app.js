@@ -16,6 +16,7 @@ let currentCalendarFilter = "ALL"; // ALL, MEETING, TASK_DEADLINE
 let calendarModalType = "MEETING";  // MEETING or TASK
 let calendarModalMode = "CREATE";   // CREATE or EDIT_MEETING
 let currentMeetingData = null;
+let currentTaskData = null;
 
 // ==========================================
 // 1. QUẢN LÝ AUTHENTICATION & API CALL
@@ -58,8 +59,21 @@ async function apiCall(endpoint, method = "GET", body = null) {
     try {
         const response = await fetch(`${API_BASE}${endpoint}`, options);
         if (response.status === 401) {
-            alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
-            handleLogout();
+            // Nếu đang gọi API đăng nhập / xác thực: hiển thị đúng thông báo lỗi từ backend
+            if (endpoint.startsWith("/auth/")) {
+                let errorMsg = "Email hoặc mật khẩu không chính xác!";
+                try {
+                    const errData = await response.json();
+                    if (errData && errData.detail) errorMsg = errData.detail;
+                } catch (e) {}
+                alert(errorMsg + "\n(Nếu bạn chưa đăng ký tài khoản trên thư mục này, vui lòng chuyển sang tab 'Đăng ký')");
+                return null;
+            }
+            // Chỉ cảnh báo hết hạn và logout khi đang trong phiên làm việc của user đã đăng nhập
+            if (getToken()) {
+                alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+                handleLogout();
+            }
             return null;
         }
         if (response.status === 204) {
@@ -87,17 +101,26 @@ document.addEventListener("DOMContentLoaded", () => {
     checkAuthState();
 });
 
-function checkAuthState() {
+async function checkAuthState() {
     const token = getToken();
     const user = getCurrentUser();
     const authScreen = document.getElementById("auth-screen");
 
     if (token && user) {
+        // Kiểm tra xem token này có thực sự hợp lệ với backend và database hiện tại không
+        const profile = await fetchUserProfile(token);
+        if (!profile) {
+            // Token đã hết hạn hoặc database mới chưa có user này -> xóa auth cũ trong im lặng
+            clearAuth();
+            authScreen.classList.remove("hidden");
+            return;
+        }
+
         authScreen.classList.add("hidden");
-        const displayName = user.username || "User";
+        const displayName = profile.username || user.username || "User";
         document.getElementById("user-display-name").textContent = displayName;
         document.getElementById("banner-username").textContent = displayName.split(" ")[0] || displayName;
-        document.getElementById("user-display-email").textContent = user.email || "";
+        document.getElementById("user-display-email").textContent = profile.email || user.email || "";
         document.getElementById("user-avatar-initial").textContent = displayName.substring(0, 2).toUpperCase();
 
         loadAllData();
@@ -179,8 +202,7 @@ function handleLogout() {
 
 function switchSidebarView(view) {
     activeSidebarView = view;
-    const views = ["home", "calendar", "mytasks", "team", "activities"];
-    const targetDiv = (view === "projects") ? "home" : view;
+    const views = ["home", "projects", "calendar", "mytasks", "team", "activities"];
 
     views.forEach(v => {
         const el = document.getElementById(`view-${v}`);
@@ -191,26 +213,17 @@ function switchSidebarView(view) {
         }
     });
 
-    const navProjects = document.getElementById("nav-projects");
-    if (navProjects) {
-        navProjects.className = "w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition";
-    }
-
-    const activeEl = document.getElementById(`view-${targetDiv}`);
+    const activeEl = document.getElementById(`view-${view}`);
     const activeBtn = document.getElementById(`nav-${view}`);
     if (activeEl) activeEl.classList.remove("hidden");
     if (activeBtn) {
         activeBtn.className = "w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-blue-50 text-blue-600 transition";
     }
 
-    if (view === "home" || view === "projects") {
+    if (view === "home") {
+        renderProjectCards(allWorkspaces);
+    } else if (view === "projects") {
         loadWorkspaceDetails();
-        if (view === "projects") {
-            setTimeout(() => {
-                const el = document.getElementById("projects-grid-container");
-                if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-            }, 60);
-        }
     } else if (view === "calendar") {
         initOrRefreshCalendar();
         setTimeout(() => {
@@ -223,6 +236,13 @@ function switchSidebarView(view) {
     } else if (view === "activities") {
         loadFullActivities();
     }
+}
+
+function openProjectView(wsId) {
+    currentWorkspaceId = wsId;
+    switchSidebarView("projects");
+    renderProjectDropdownMenu(allWorkspaces);
+    loadWorkspaceDetails();
 }
 
 
@@ -259,45 +279,71 @@ async function loadWorkspaces() {
 
 function renderProjectCards(workspaces) {
     const container = document.getElementById("projects-grid-container");
+    if (!container) return;
     container.innerHTML = "";
 
+    if (!workspaces || workspaces.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full py-12 text-center bg-slate-50 border border-dashed border-slate-200 rounded-3xl">
+                <i class="fa-regular fa-folder-open text-3xl text-slate-300 mb-2"></i>
+                <p class="text-xs font-bold text-slate-500">Chưa có dự án nào.</p>
+                <button onclick="openModal('create-workspace-modal')" class="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition">Tạo dự án mới</button>
+            </div>
+        `;
+        return;
+    }
+
     const cardStyles = [
-        { bg: "bg-purple-50", text: "text-purple-600", tagBg: "bg-purple-100 text-purple-700", tag: "Backend", icon: "fa-solid fa-shapes" },
-        { bg: "bg-emerald-50", text: "text-emerald-600", tagBg: "bg-emerald-100 text-emerald-700", tag: "Full Stack", icon: "fa-solid fa-layer-group" },
-        { bg: "bg-rose-50", text: "text-rose-600", tagBg: "bg-rose-100 text-rose-700", tag: "Frontend", icon: "fa-solid fa-mobile-screen-button" },
-        { bg: "bg-amber-50", text: "text-amber-600", tagBg: "bg-amber-100 text-amber-700", tag: "Frontend", icon: "fa-solid fa-images" },
-        { bg: "bg-sky-50", text: "text-sky-600", tagBg: "bg-sky-100 text-sky-700", tag: "Frontend", icon: "fa-solid fa-globe" }
+        { bg: "bg-blue-50", text: "text-blue-600", icon: "fa-solid fa-shapes" },
+        { bg: "bg-purple-50", text: "text-purple-600", icon: "fa-solid fa-layer-group" },
+        { bg: "bg-emerald-50", text: "text-emerald-600", icon: "fa-solid fa-code" },
+        { bg: "bg-amber-50", text: "text-amber-600", icon: "fa-solid fa-laptop-code" },
+        { bg: "bg-rose-50", text: "text-rose-600", icon: "fa-solid fa-diagram-project" }
     ];
+
+    const currentUser = getCurrentUser();
 
     workspaces.forEach((ws, idx) => {
         const style = cardStyles[idx % cardStyles.length];
         const isSelected = String(ws.id) === String(currentWorkspaceId);
+        const isOwner = currentUser && (String(ws.owner_id) === String(currentUser.id));
+        const progressPct = ws.completion_rate !== undefined ? ws.completion_rate : 0;
+        const totalTasks = ws.total_tasks || 0;
+        const doneTasks = ws.done_tasks || 0;
 
         const card = document.createElement("div");
-        card.className = `bg-white p-4 rounded-2xl border transition cursor-pointer hover:shadow-md space-y-3.5 ${
+        card.className = `bg-white p-5 rounded-2xl border transition cursor-pointer hover:shadow-md hover:border-blue-400 space-y-4 flex flex-col justify-between ${
             isSelected ? 'border-blue-500 ring-2 ring-blue-500/10' : 'border-slate-200/80'
         }`;
-        card.onclick = () => selectWorkspace(ws.id);
+        card.onclick = () => openProjectView(ws.id);
 
         card.innerHTML = `
-            <div class="flex items-center justify-between">
-                <div class="w-9 h-9 rounded-xl ${style.bg} ${style.text} flex items-center justify-center text-sm font-bold">
-                    <i class="${style.icon}"></i>
-                </div>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${style.tagBg}">${style.tag}</span>
-            </div>
-            <div>
-                <h4 class="font-extrabold text-sm text-slate-900 truncate leading-snug">${ws.name}</h4>
-                <div class="flex items-center gap-2 mt-2">
-                    <div class="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-blue-600 h-full rounded-full" style="width: 50%"></div>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="w-10 h-10 rounded-xl ${style.bg} ${style.text} flex items-center justify-center text-sm font-bold shadow-xs">
+                        <i class="${style.icon}"></i>
                     </div>
-                    <span class="text-[11px] font-bold text-slate-400">50%</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">#${ws.id}</span>
+                        ${isOwner ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Owner</span>' : ''}
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-extrabold text-base text-slate-900 truncate leading-snug">${ws.name}</h4>
+                    <p class="text-xs text-slate-600 mt-1 line-clamp-3 leading-relaxed whitespace-pre-line">
+                        ${ws.description ? ws.description : '<span class="italic text-slate-400">Không có mô tả chi tiết.</span>'}
+                    </p>
                 </div>
             </div>
-            <p class="text-[11px] text-slate-400 font-medium pt-1 border-t border-slate-100 truncate">
-                ID: #${ws.id} • ${ws.description || 'Dự án đang triển khai'}
-            </p>
+            <div class="pt-3 border-t border-slate-100">
+                <div class="flex items-center justify-between text-xs mb-1.5 font-bold">
+                    <span class="text-slate-500 font-medium">Tiến độ</span>
+                    <span class="text-slate-700">${progressPct}% <span class="text-[11px] text-slate-400 font-normal">(${doneTasks}/${totalTasks} tasks)</span></span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: ${progressPct}%"></div>
+                </div>
+            </div>
         `;
         container.appendChild(card);
     });
@@ -345,6 +391,23 @@ async function loadWorkspaceDetails() {
     const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
     if (currentWs) {
         document.getElementById("current-board-project-name").textContent = currentWs.name;
+        const idBadge = document.getElementById("current-board-project-id");
+        if (idBadge) idBadge.textContent = `ID: #${currentWs.id}`;
+
+        const ownerBadge = document.getElementById("current-board-owner-badge");
+        const currentUser = getCurrentUser();
+        const isOwner = currentUser && (String(currentWs.owner_id) === String(currentUser.id));
+        if (ownerBadge) {
+            ownerBadge.textContent = isOwner ? "Owner (Bạn)" : `Chủ dự án #${currentWs.owner_id}`;
+            ownerBadge.className = isOwner 
+                ? "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800"
+                : "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700";
+        }
+
+        const descEl = document.getElementById("current-board-project-desc");
+        if (descEl) {
+            descEl.textContent = currentWs.description || "Dự án này chưa có mô tả chi tiết.";
+        }
     }
 
     // 1. Tải Summary Stats
@@ -454,7 +517,7 @@ function createTaskCardElement(task) {
     // Date
     let dateStr = "No date";
     if (task.due_date) {
-        const d = new Date(task.due_date);
+        const d = parseUTCDate(task.due_date) || new Date(task.due_date);
         dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
@@ -466,7 +529,6 @@ function createTaskCardElement(task) {
     card.innerHTML = `
         <h5 class="font-bold text-xs text-slate-800 leading-snug line-clamp-2">${task.title}</h5>
         <div class="flex items-center gap-1.5 flex-wrap">
-            <span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Backend</span>
             <span class="${priorityClass} text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                 <span class="w-1 h-1 rounded-full ${priorityDot}"></span> ${task.priority}
             </span>
@@ -512,14 +574,35 @@ function handleGlobalSearch(keyword) {
 // 6. RIGHT SIDEBAR WIDGETS
 // ==========================================
 
+// Helper chuẩn hóa ngày giờ UTC từ SQLite / Backend sang Date Object địa phương
+function parseUTCDate(dateStr) {
+    if (!dateStr) return null;
+    let s = String(dateStr).trim();
+    if (!s.endsWith("Z") && !/[+-]\d{2}:\d{2}$/.test(s)) {
+        s = s.replace(" ", "T") + "Z";
+    }
+    return new Date(s);
+}
+
 async function loadRecentActivitiesWidget() {
     if (!currentWorkspaceId) return;
-    const activities = await apiCall(`/workspaces/${currentWorkspaceId}/activities`, "GET");
     const container = document.getElementById("recent-activity-list");
+    if (!container) return;
     container.innerHTML = "";
 
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+
+    // KIỂM TRA QUYỀN OWNER: Chỉ chủ sở hữu dự án mới thấy
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id) === String(currentUser.id));
+    if (!isOwner) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-3 text-center italic"><i class="fa-solid fa-lock text-[10px] mr-1"></i> Chỉ chủ sở hữu dự án mới có quyền xem hoạt động.</p>`;
+        return;
+    }
+
+    const activities = await apiCall(`/workspaces/${currentWorkspaceId}/activities`, "GET");
     if (!activities || activities.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 py-2">No recent activity.</p>`;
+        container.innerHTML = `<p class="text-xs text-slate-400 py-2">Chưa có hoạt động nào gần đây.</p>`;
         return;
     }
 
@@ -559,7 +642,7 @@ function renderUpcomingDeadlinesWidget(tasks) {
     const wsName = currentWs ? currentWs.name : "Project";
 
     tasksWithDeadline.forEach(t => {
-        const d = new Date(t.due_date);
+        const d = parseUTCDate(t.due_date) || new Date(t.due_date);
         const monthStr = d.toLocaleDateString('en-US', { month: 'short' });
         const dayStr = d.getDate();
 
@@ -584,15 +667,16 @@ function renderUpcomingDeadlinesWidget(tasks) {
 function formatRelativeTime(dateStr) {
     if (!dateStr) return "vừa xong";
     const now = new Date();
-    const past = new Date(dateStr);
+    const past = parseUTCDate(dateStr);
+    if (!past || isNaN(past.getTime())) return "vừa xong";
     const diffMin = Math.round((now - past) / 60000);
 
-    if (diffMin < 1) return "just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffMin < 1) return "vừa xong";
+    if (diffMin < 60) return `${diffMin} phút trước`;
     const diffHours = Math.round(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
     const diffDays = Math.round(diffHours / 24);
-    return `${diffDays}d ago`;
+    return `${diffDays} ngày trước`;
 }
 
 
@@ -604,10 +688,11 @@ async function openTaskDetail(taskId) {
     currentTaskId = taskId;
     const task = await apiCall(`/tasks/${taskId}`, "GET");
     if (!task) return;
+    currentTaskData = task;
 
     document.getElementById("modal-task-id").textContent = `#${task.id}`;
     document.getElementById("modal-task-title").textContent = task.title;
-    document.getElementById("modal-task-desc").textContent = task.description || "No description provided.";
+    document.getElementById("modal-task-desc").textContent = task.description || "Không có mô tả chi tiết.";
     
     // Đồng bộ select trạng thái và pills
     const statusSelect = document.getElementById("modal-task-status-select");
@@ -623,19 +708,99 @@ async function openTaskDetail(taskId) {
     document.getElementById("modal-task-priority").textContent = task.priority;
 
     if (task.due_date) {
-        document.getElementById("modal-task-due").textContent = new Date(task.due_date).toLocaleString('vi-VN');
+        const d = parseUTCDate(task.due_date);
+        document.getElementById("modal-task-due").textContent = d ? d.toLocaleString('vi-VN') : "Chưa đặt";
     } else {
         document.getElementById("modal-task-due").textContent = "Chưa đặt";
     }
 
-    document.getElementById("modal-task-assignee").textContent = (task.assignee && task.assignee.username)
-        ? task.assignee.username
-        : "Chưa gán";
+    // Đổ danh sách người làm và chọn người hiện tại
+    await populateTaskAssigneeSelect("detail-task-assignee-select", task.assignee_id);
 
     switchTaskDetailTab("comments");
     loadTaskComments(taskId);
     loadTaskActivities(taskId);
     openModal("task-detail-modal");
+}
+
+async function handleReassignTask(newAssigneeId) {
+    if (!currentTaskId) return;
+    const assignee = newAssigneeId ? parseInt(newAssigneeId) : null;
+    const res = await apiCall(`/tasks/${currentTaskId}`, "PUT", { assignee_id: assignee });
+    if (res) {
+        showToast("Đã phân công lại người làm!");
+        loadWorkspaceDetails();
+        loadTaskActivities(currentTaskId);
+        loadRecentActivitiesWidget();
+    }
+}
+
+async function populateTaskAssigneeSelect(selectElementId = "task-assignee", selectedUserId = null) {
+    const select = document.getElementById(selectElementId);
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Chưa gán cho ai --</option>';
+
+    const targetWsId = currentWorkspaceId;
+    if (!targetWsId) return;
+
+    const members = await apiCall(`/workspaces/${targetWsId}/members`, "GET");
+    if (members && members.length > 0) {
+        members.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.user_id;
+            const uname = (m.user && m.user.username) ? m.user.username : `User #${m.user_id}`;
+            opt.textContent = `${uname} (${m.role})`;
+            if (selectedUserId && String(m.user_id) === String(selectedUserId)) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    }
+}
+
+async function convertCurrentTaskToMeeting() {
+    if (!currentTaskData) return;
+    const task = currentTaskData;
+    closeModal("task-detail-modal");
+
+    calendarModalMode = 'CREATE';
+    calendarModalType = 'MEETING';
+
+    document.getElementById("cal-modal-title").textContent = "Chuyển Task sang Cuộc họp";
+    document.getElementById("cal-modal-subtitle").textContent = "Tạo cuộc họp từ nội dung công việc";
+    document.getElementById("cal-type-switcher").classList.add("hidden");
+    document.getElementById("cal-submit-btn").innerHTML = '<i class="fa-regular fa-calendar-check mr-1.5"></i> Tạo cuộc họp';
+
+    populateCalendarWorkspaceSelect(task.workspace_id || currentWorkspaceId);
+
+    document.getElementById("meet-title").value = `[Họp] ${task.title}`;
+    document.getElementById("meet-desc").value = task.description || "";
+    generateAutoJitsiLink();
+
+    let start = task.due_date ? (parseUTCDate(task.due_date) || new Date()) : new Date();
+    let end = new Date(start.getTime() + 60 * 60 * 1000);
+    document.getElementById("meet-start").value = formatDateTimeLocal(start);
+    document.getElementById("meet-end").value = formatDateTimeLocal(end);
+
+    switchCalendarModalTab('MEETING');
+    openModal("create-meeting-modal");
+}
+
+async function convertCurrentMeetingToTask() {
+    if (!currentMeetingData) return;
+    const meeting = currentMeetingData;
+    closeModal("meeting-detail-modal");
+
+    document.getElementById("task-title").value = meeting.title;
+    const descExtra = meeting.meeting_link ? `Link họp: ${meeting.meeting_link}` : "";
+    document.getElementById("task-desc").value = meeting.description ? `${meeting.description}\n${descExtra}`.trim() : descExtra;
+    
+    if (meeting.start) {
+        const d = new Date(meeting.start);
+        document.getElementById("task-due-date").value = formatDateTimeLocal(d);
+    }
+    await populateTaskAssigneeSelect("task-assignee");
+    openModal("create-task-modal");
 }
 
 function updateModalStatusPills(currentStatus) {
@@ -755,7 +920,8 @@ async function loadTaskComments(taskId) {
     comments.forEach(c => {
         const item = document.createElement("div");
         item.className = "flex gap-3 text-sm";
-        const dateStr = new Date(c.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+        const d = parseUTCDate(c.created_at);
+        const dateStr = d ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : new Date(c.created_at).toLocaleString();
         const isMyComment = currentUser && (String(currentUser.id) === String(c.user_id));
 
         item.innerHTML = `
@@ -816,7 +982,8 @@ async function loadTaskActivities(taskId) {
     activities.forEach(a => {
         const item = document.createElement("div");
         item.className = "flex items-start gap-3 text-xs";
-        const timeStr = new Date(a.created_at).toLocaleString('vi-VN');
+        const d = parseUTCDate(a.created_at);
+        const timeStr = d ? d.toLocaleString('vi-VN') : new Date(a.created_at).toLocaleString();
 
         item.innerHTML = `
             <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -844,13 +1011,15 @@ async function handleCreateTask(e) {
     const description = document.getElementById("task-desc").value.trim();
     const priority = document.getElementById("task-priority").value;
     const dueVal = document.getElementById("task-due-date").value;
+    const assigneeVal = document.getElementById("task-assignee") ? document.getElementById("task-assignee").value : null;
 
     const payload = {
         title,
         description: description || null,
         priority,
         status: "TODO",
-        due_date: dueVal ? new Date(dueVal).toISOString() : null
+        due_date: dueVal ? new Date(dueVal).toISOString() : null,
+        assignee_id: assigneeVal ? parseInt(assigneeVal) : null
     };
 
     const res = await apiCall(`/workspaces/${currentWorkspaceId}/tasks`, "POST", payload);
@@ -859,7 +1028,12 @@ async function handleCreateTask(e) {
         document.getElementById("task-title").value = "";
         document.getElementById("task-desc").value = "";
         document.getElementById("task-due-date").value = "";
+        if (document.getElementById("task-assignee")) {
+            document.getElementById("task-assignee").value = "";
+        }
+        showToast("Đã tạo task mới thành công!");
         loadWorkspaceDetails();
+        loadRecentActivitiesWidget();
     }
 }
 
@@ -874,22 +1048,25 @@ async function handleCreateWorkspace(e) {
         document.getElementById("ws-name").value = "";
         document.getElementById("ws-desc").value = "";
         currentWorkspaceId = res.id;
-        loadWorkspaces();
+        await loadWorkspaces();
+        openProjectView(res.id);
     }
 }
 
 async function handleJoinWorkspace(e) {
     e.preventDefault();
-    const wsId = document.getElementById("join-ws-id").value.trim();
+    let wsId = document.getElementById("join-ws-id").value.trim();
     if (!wsId) return;
+    wsId = wsId.replace("#", "").trim();
 
     const res = await apiCall(`/workspaces/${wsId}/join`, "POST");
     if (res) {
-        showToast("Tham gia Workspace thành công!");
+        showToast("Tham gia dự án thành công!");
         closeModal("join-workspace-modal");
         document.getElementById("join-ws-id").value = "";
-        currentWorkspaceId = wsId;
-        loadWorkspaces();
+        currentWorkspaceId = res.workspace_id || wsId;
+        await loadWorkspaces();
+        openProjectView(currentWorkspaceId);
     }
 }
 
@@ -1577,10 +1754,13 @@ async function loadMyTasks() {
         item.className = "p-4 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer";
         item.onclick = () => openTaskDetail(t.id);
 
+        const d = parseUTCDate(t.due_date);
+        const dueStr = d ? d.toLocaleDateString('vi-VN') : 'Không hạn';
+
         item.innerHTML = `
             <div>
                 <h5 class="text-sm font-bold text-slate-900">${t.title}</h5>
-                <p class="text-xs text-slate-400 mt-0.5">Hạn chót: ${t.due_date ? new Date(t.due_date).toLocaleDateString('vi-VN') : 'Không hạn'}</p>
+                <p class="text-xs text-slate-400 mt-0.5">Hạn chót: ${dueStr}</p>
             </div>
             <div class="flex items-center gap-3">
                 <select onclick="event.stopPropagation()" onchange="handleQuickTaskStatusChange(${t.id}, this.value, event)" class="text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-xs focus:outline-none hover:border-blue-400 cursor-pointer">
@@ -1618,21 +1798,24 @@ async function loadMembers() {
     members.forEach(m => {
         const item = document.createElement("div");
         item.className = "px-6 py-4 flex items-center justify-between";
-        const dateStr = new Date(m.joined_at).toLocaleDateString('vi-VN');
+        const d = parseUTCDate(m.joined_at);
+        const dateStr = d ? d.toLocaleDateString('vi-VN') : new Date(m.joined_at).toLocaleDateString('vi-VN');
+        const uname = (m.user && m.user.username) ? m.user.username : `User #${m.user_id}`;
+        const initial = uname.charAt(0).toUpperCase();
 
         item.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-xs">
-                    #${m.user_id}
+                    ${initial}
                 </div>
                 <div>
-                    <p class="text-sm font-bold text-slate-800">User ID: ${m.user_id}</p>
+                    <p class="text-sm font-bold text-slate-800">${uname}</p>
                     <p class="text-xs text-slate-400">Tham gia: ${dateStr}</p>
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">${m.role}</span>
-                <button onclick="handleRemoveMember('${m.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-semibold py-1 px-2 rounded-lg hover:bg-rose-50 transition">Xóa</button>
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full ${m.role === 'OWNER' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}">${m.role}</span>
+                ${m.role !== 'OWNER' ? `<button onclick="handleRemoveMember('${m.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-semibold py-1 px-2 rounded-lg hover:bg-rose-50 transition">Xóa</button>` : ''}
             </div>
         `;
         container.appendChild(item);
@@ -1661,10 +1844,26 @@ async function handleRemoveMember(userId) {
 
 async function loadFullActivities() {
     if (!currentWorkspaceId) return;
-    const activities = await apiCall(`/workspaces/${currentWorkspaceId}/activities`, "GET");
     const container = document.getElementById("full-activity-timeline");
+    if (!container) return;
     container.innerHTML = "";
 
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+
+    // KIỂM TRA QUYỀN OWNER: Chỉ chủ sở hữu dự án mới thấy
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id) === String(currentUser.id));
+    if (!isOwner) {
+        container.innerHTML = `
+            <div class="p-8 text-center text-slate-500 bg-white border border-slate-200/70 rounded-2xl">
+                <i class="fa-solid fa-lock text-2xl text-slate-400 mb-2"></i>
+                <p class="font-bold text-sm">Chỉ chủ sở hữu (Owner) của dự án mới có quyền xem hoạt động.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const activities = await apiCall(`/workspaces/${currentWorkspaceId}/activities`, "GET");
     if (!activities || activities.length === 0) {
         container.innerHTML = `<p class="p-6 text-sm text-slate-400 text-center">Chưa có hoạt động nào.</p>`;
         return;
@@ -1673,7 +1872,8 @@ async function loadFullActivities() {
     activities.forEach(act => {
         const item = document.createElement("div");
         item.className = "flex items-start gap-4 p-4 rounded-2xl bg-white border border-slate-200/70 shadow-sm";
-        const timeStr = new Date(act.created_at).toLocaleString('vi-VN');
+        const d = parseUTCDate(act.created_at);
+        const timeStr = d ? d.toLocaleString('vi-VN') : "vừa xong";
 
         item.innerHTML = `
             <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 text-xs mt-0.5">
@@ -1698,7 +1898,12 @@ async function loadFullActivities() {
 
 function openModal(id) {
     const el = document.getElementById(id);
-    if (el) el.classList.remove("hidden");
+    if (el) {
+        el.classList.remove("hidden");
+        if (id === "create-task-modal") {
+            populateTaskAssigneeSelect("task-assignee");
+        }
+    }
 }
 
 function closeModal(id) {
