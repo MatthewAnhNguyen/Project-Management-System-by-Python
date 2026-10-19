@@ -13,7 +13,7 @@ def generate_random_id(length: int = 12) -> str:
 class User(Base):
     __tablename__ = "users"  # Tên bảng trong MySQL
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(50), primary_key=True, default=generate_random_id, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
@@ -34,7 +34,7 @@ class Workspace(Base):
     description = Column(String(255), nullable=True)  # Có thể để trống
 
     # Khóa ngoại liên kết với id của bảng users
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     owner = relationship("User", back_populates="workspaces_owned")
@@ -52,7 +52,7 @@ class WorkspaceMember(Base):
 
     # THÊM ondelete="CASCADE" vào đây
     workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     role = Column(String(20), default="MEMBER")
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -74,8 +74,8 @@ class Task(Base):
 
     # Khóa ngoại liên kết Workspace và Users
     workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
-    creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    assignee_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creator_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    assignee_id = Column(String(50), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -94,7 +94,7 @@ class TaskComment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -109,7 +109,7 @@ class TaskActivity(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     action_type = Column(String(50), nullable=False)  # TASK_CREATED, STATUS_CHANGED, ASSIGNEE_CHANGED, COMMENT_ADDED, TASK_UPDATED
     description = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -130,7 +130,7 @@ class Meeting(Base):
 
     # Khóa ngoại
     workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
-    creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    creator_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="SET NULL"), nullable = True)
     #Cuộc họp này có gắn với Task cụ thể nào không (optional)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -144,7 +144,7 @@ class WorkspaceActivity(Base):
     __tablename__ = "workspace_activities"
     id = Column(Integer, primary_key=True, index=True)
     workspace_id = Column(String(50), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     action_type = Column(String(50), nullable=False)
     description = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

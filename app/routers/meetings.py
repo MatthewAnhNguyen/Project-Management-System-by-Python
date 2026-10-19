@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional, Union
 from datetime import datetime, timezone
 
@@ -69,19 +70,22 @@ def check_workspace_membership(workspace_id: str, user_id: str, db: Session):
 
 # Helper kiểm tra quyền Owner riêng
 def check_workspace_owner(workspace_id: str, user_id: str, db: Session):
-    #1. Tìm workspace theo ID
-    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+    clean_ws_id = str(workspace_id).replace('#', '').strip()
+    clean_uid = str(user_id).replace('#', '').strip()
+    workspace = db.query(models.Workspace).filter(
+        or_(models.Workspace.id == workspace_id, models.Workspace.id == clean_ws_id)
+    ).first()
     if not workspace:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workspace không tồn tại!"
         )
 
-    #2. Kiểm tra quyền Chủ sở hữu: owner_id có khớp với id của người đăng nhập không
-    if str(workspace.owner_id) != str(user_id):
+    # Kiểm tra quyền Chủ sở hữu
+    if str(workspace.owner_id).replace('#', '').strip() != clean_uid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Chỉ chủ sở hữu của Workspace mới có quyền tạo cuộc họp cho nhóm!"
+            detail="Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền tạo và thao tác cuộc họp!"
         )
     return workspace
 
@@ -92,8 +96,8 @@ def create_meeting(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Bước 1: KIỂM TRA QUYỀN - Owner hoặc Member đều được lên lịch họp
-    workspace = check_workspace_membership(workspace_id, current_user.id, db)
+    # Bước 1: KIỂM TRA QUYỀN - Chỉ Owner mới được lên lịch họp
+    workspace = check_workspace_owner(workspace_id, current_user.id, db)
 
     # Chuẩn hoá datetime
     start_dt = normalize_dt(meeting_data.start_time)
@@ -189,12 +193,12 @@ def update_meeting(
             detail="Cuộc họp không tồn tại!"
         )
     workspace = db.query(models.Workspace).filter(models.Workspace.id == meeting.workspace_id).first()
-    is_creator = (str(meeting.creator_id) == str(current_user.id))
-    is_owner = (workspace and str(workspace.owner_id) == str(current_user.id))
-    if not is_creator and not is_owner:
+    clean_uid = str(current_user.id).replace('#', '').strip()
+    is_owner = (workspace and str(workspace.owner_id).replace('#', '').strip() == clean_uid)
+    if not is_owner:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Chỉ người tạo cuộc họp hoặc chủ sở hữu Workspace mới có quyền sửa cuộc họp!"
+            detail="Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền sửa cuộc họp!"
         )
 
     # Chuẩn hoá datetime để so sánh tránh lỗi TypeError naive vs aware
@@ -237,12 +241,12 @@ def delete_meeting(
             detail="Cuộc họp không tồn tại!"
         )
     workspace = db.query(models.Workspace).filter(models.Workspace.id == meeting.workspace_id).first()
-    is_creator = (str(meeting.creator_id) == str(current_user.id))
-    is_owner = (workspace and str(workspace.owner_id) == str(current_user.id))
-    if not is_creator and not is_owner:
+    clean_uid = str(current_user.id).replace('#', '').strip()
+    is_owner = (workspace and str(workspace.owner_id).replace('#', '').strip() == clean_uid)
+    if not is_owner:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Chỉ người tạo cuộc họp hoặc chủ sở hữu Workspace mới có quyền xóa cuộc họp!"
+            detail="Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền xóa cuộc họp!"
         )
     log_workspace_activity(
         workspace_id=meeting.workspace_id,

@@ -66,23 +66,25 @@ def search_users(
     query= db.query(models.User)
 
     if q:
-        query=query.filter(
-            or_(
-               models.User.username.ilike(f"%{q}%"),
-
-               models.User.email.ilike(f"%{q}%")
-            )
-        )
+        q_trimmed = q.strip()
+        clean_q = q_trimmed.replace('#', '').strip()
+        conditions = [
+            models.User.username.ilike(f"%{q_trimmed}%"),
+            models.User.email.ilike(f"%{q_trimmed}%")
+        ]
+        conditions.append(models.User.id == clean_q)
+        query = query.filter(or_(*conditions))
     return query.all()
 
 # 5. XEM PROFILE NGƯỜI DÙNG THEO ID
 @router.get("/{user_id}", response_model=schemas.UserResponse)
 def get_user_by_id(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db),
-    current_user: models.User=Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
-    user=db.query(models.User).filter(models.User.id==user_id).first()
+    clean_id = user_id.replace('#', '').strip()
+    user = db.query(models.User).filter(or_(models.User.id == user_id, models.User.id == clean_id)).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng!")
