@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 # 1. Schema cho dữ liệu người dùng gửi lên (Request)
 class UserCreate(BaseModel):
@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
 
 # 2. Schema cho dữ liệu trả về (Response) - TUYỆT ĐỐI KHÔNG CÓ password
 class UserResponse(BaseModel):
-    id: int
+    id: str
     username: str
     email: str
     role: str
@@ -20,7 +20,7 @@ class UserResponse(BaseModel):
         from_attributes = True # Bắt buộc có để chuyển đổi dữ liệu từ SQLAlchemy sang Pydantic
 
 class UserSimpleResponse(BaseModel):
-    id: int
+    id: str
     username: str
     email: str
 
@@ -47,7 +47,7 @@ class WorkspaceResponse(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    owner_id: int
+    owner_id: str
     created_at: datetime
     total_tasks: Optional[int] = 0
     done_tasks: Optional[int] = 0
@@ -56,15 +56,16 @@ class WorkspaceResponse(BaseModel):
     class Config:
         from_attributes = True
 # --- (MỚI) SCHEMA CHO THÀNH VIÊN WORKSPACE ---
-# Client chỉ cần gửi lên user_id muốn thêm
+# Client có thể gửi lên user_id (chuỗi ID ngẫu nhiên) hoặc username/email
 class WorkspaceMemberCreate(BaseModel):
-    user_id: int
+    user_id: str
+
 
 # Dữ liệu trả về
 class WorkspaceMemberResponse(BaseModel):
     id: int
     workspace_id: str
-    user_id: int
+    user_id: str
     role: str
     joined_at: datetime
     user: Optional[UserSimpleResponse] = None
@@ -88,7 +89,7 @@ class TaskCreate(BaseModel):
     status: Optional[str]="TODO"
     priority: Optional[str]="MEDIUM"
     due_date: Optional[datetime]=None
-    assignee_id: Optional[int]=None
+    assignee_id: Optional[str]=None
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -96,7 +97,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     priority: Optional[str] = None
     due_date: Optional[datetime] = None
-    assignee_id: Optional[int] = None
+    assignee_id: Optional[str] = None
 
 class TaskResponse(BaseModel):
     id: int
@@ -106,8 +107,8 @@ class TaskResponse(BaseModel):
     priority: str
     due_date: Optional[datetime]
     workspace_id: str
-    creator_id: int
-    assignee_id: Optional[int]
+    creator_id: str
+    assignee_id: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
     creator: Optional[UserResponse] = None
@@ -123,7 +124,7 @@ class CommentCreate(BaseModel):
 class CommentResponse(BaseModel):
     id: int
     task_id: int
-    user_id: int
+    user_id: str
     content: str
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -136,7 +137,7 @@ class CommentResponse(BaseModel):
 class TaskActivityResponse(BaseModel):
     id: int
     task_id: int
-    user_id: Optional[int] = None
+    user_id: Optional[str] = None
     action_type: str
     description: str
     created_at: datetime
@@ -144,6 +145,7 @@ class TaskActivityResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 # --- (MỚI) SCHEMAS PHỤC VỤ GIAO DIỆN TASK UI / KANBAN / SUMMARY ---
 class KanbanBoardResponse(BaseModel):
@@ -188,7 +190,7 @@ class MeetingResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     workspace_id: str
-    creator_id: int
+    creator_id: str
     task_id: Optional[int]
     created_at: datetime
     creator: Optional[UserSimpleResponse] = None
@@ -199,7 +201,7 @@ class MeetingResponse(BaseModel):
 class WorkspaceActivityResponse(BaseModel):
     id: int
     workspace_id: str
-    user_id: Optional[int] = None
+    user_id: Optional[str] = None
     action_type: str
     description: str
     created_at: datetime

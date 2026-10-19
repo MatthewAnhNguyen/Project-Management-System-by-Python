@@ -14,7 +14,7 @@ router = APIRouter(prefix="/workspaces", tags=["Workspaces & Members"])
 # Helper
 def log_workspace_activity(
         workspace_id: str,
-        user_id: int,
+        user_id: str,
         action_type: str,
         description: str,
         db: Session
@@ -153,44 +153,71 @@ def delete_workspace(workspace_id: str, db: Session = Depends(get_db),
 def add_workspace_member(workspace_id: str, member_data: schemas.WorkspaceMemberCreate, db: Session = Depends(get_db),
                          current_user: models.User = Depends(get_current_user)):
     # B1: Kiểm tra Workspace có tồn tại không (404)
-    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+    clean_id = str(workspace_id).replace('#', '').strip()
+    workspace = db.query(models.Workspace).filter(
+        or_(models.Workspace.id == workspace_id, models.Workspace.id == clean_id)
+    ).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace không tồn tại!")
 
     # B2: Kiểm tra quyền - Chỉ Owner mới được thêm người (403)
     if str(workspace.owner_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Chỉ Owner mới có quyền thêm thành viên!")
+        raise HTTPException(status_code=403, detail="Chỉ Chủ sở hữu (Owner) mới có quyền thêm thành viên!")
 
-    # B3: Kiểm tra User muốn thêm có thực sự tồn tại trong hệ thống không (404)
-    target_user = db.query(models.User).filter(models.User.id == member_data.user_id).first()
+    # B3: Tìm User muốn thêm bằng ID, Username hoặc Email
+    raw_val = str(member_data.user_id).strip()
+    clean_val = raw_val.replace('#', '').strip()
+    target_user = db.query(models.User).filter(
+        or_(models.User.id == clean_val, models.User.id == raw_val)
+    ).first()
+
     if not target_user:
-        raise HTTPException(status_code=404, detail="Người dùng không tồn tại!")
+        target_user = db.query(models.User).filter(
+            or_(
+                models.User.username.ilike(raw_val),
+                models.User.email.ilike(raw_val)
+            )
+        ).first()
+
+    if not target_user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Không tìm thấy người dùng với thông tin: '{raw_val}'. Vui lòng kiểm tra lại User ID hoặc Email!"
+        )
 
     # B4: Kiểm tra xem User đó đã là thành viên chưa hoặc có phải chính là Owner không (409)
-    if str(member_data.user_id) == str(workspace.owner_id):
-        raise HTTPException(status_code=409, detail="User này là Owner của Workspace rồi!")
+    if str(target_user.id) == str(workspace.owner_id):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Người dùng {target_user.username} (ID: #{target_user.id}) chính là Chủ dự án (Owner)!"
+        )
 
     existing_member = db.query(models.WorkspaceMember).filter(
-        models.WorkspaceMember.workspace_id == str(workspace_id),
-        models.WorkspaceMember.user_id == str(member_data.user_id)
+        models.WorkspaceMember.workspace_id == str(workspace.id),
+        models.WorkspaceMember.user_id == target_user.id
     ).first()
     if existing_member:
-        raise HTTPException(status_code=409, detail="Người dùng này đã là thành viên của Workspace!")
+        raise HTTPException(
+            status_code=409,
+            detail=f"Người dùng {target_user.username} (ID: #{target_user.id}) đã là thành viên của dự án!"
+        )
 
     # B5: Thỏa mãn hết điều kiện -> Lưu vào DB
     new_member = models.WorkspaceMember(
-        workspace_id=workspace_id,
-        user_id=member_data.user_id,
+        workspace_id=workspace.id,
+        user_id=target_user.id,
         role="MEMBER"
     )
     db.add(new_member)
     db.commit()
     db.refresh(new_member)
+    new_member.user = target_user
+
     log_workspace_activity(
-        workspace_id=workspace_id,
+        workspace_id=workspace.id,
         user_id=current_user.id,
         action_type="MEMBER_ADDED",
-        description=f"{current_user.username} đã thêm {target_user.username} vào Workspace",
+        description=f"{current_user.username} đã thêm {target_user.username} (ID: #{target_user.id}) vào Workspace",
         db=db
     )
     return new_member
@@ -253,9 +280,11 @@ def remove_workspace_member(workspace_id: str, user_id: str, db: Session = Depen
         raise HTTPException(status_code=403, detail="Chỉ Owner mới có quyền xóa thành viên!")
 
     # Tìm record thành viên
+    clean_user_id = str(user_id).replace('#', '').strip()
+    target_user_id = int(clean_user_id) if clean_user_id.isdigit() else user_id
     member_to_remove = db.query(models.WorkspaceMember).filter(
         models.WorkspaceMember.workspace_id == str(workspace.id),
-        models.WorkspaceMember.user_id == str(user_id)
+        models.WorkspaceMember.user_id == target_user_id
     ).first()
 
     if not member_to_remove:

@@ -25,6 +25,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- NGĂN TRÌNH DUYỆT CACHE FILE CŨ (BẬT NO-CACHE TOÀN BỘ) ---
+@app.middleware("http")
+async def add_no_cache_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 # --- GẮN CÁC ROUTER VÀO APP CHÍNH ---
 app.include_router(auth.router)
 app.include_router(users.router)

@@ -117,17 +117,60 @@ async function checkAuthState() {
         }
 
         authScreen.classList.add("hidden");
+        // Lưu thông tin người dùng đầy đủ bao gồm ID vào localStorage
+        setAuth(token, profile);
+
         const displayName = profile.username || user.username || "User";
+        const myUserId = profile.id || user.id || "";
+
         document.getElementById("user-display-name").textContent = displayName;
         document.getElementById("banner-username").textContent = displayName.split(" ")[0] || displayName;
         document.getElementById("user-display-email").textContent = profile.email || user.email || "";
         document.getElementById("user-avatar-initial").textContent = displayName.substring(0, 2).toUpperCase();
+
+        // Hiển thị thông tin vào Dropdown mở rộng (chứa User ID chuỗi ngẫu nhiên)
+        const dropdownIdEl = document.getElementById("dropdown-user-id");
+        if (dropdownIdEl) dropdownIdEl.textContent = myUserId;
+        const dropdownNameEl = document.getElementById("dropdown-user-name");
+        if (dropdownNameEl) dropdownNameEl.textContent = displayName;
+        const dropdownEmailEl = document.getElementById("dropdown-user-email");
+        if (dropdownEmailEl) dropdownEmailEl.textContent = profile.email || user.email || "";
+        const dropdownAvatarEl = document.getElementById("dropdown-avatar-initial");
+        if (dropdownAvatarEl) dropdownAvatarEl.textContent = displayName.substring(0, 2).toUpperCase();
 
         loadAllData();
     } else {
         authScreen.classList.remove("hidden");
     }
 }
+
+function toggleProfileDropdown(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById("user-profile-dropdown");
+    const chevron = document.getElementById("profile-chevron");
+    if (!dropdown) return;
+    const isHidden = dropdown.classList.contains("hidden");
+    if (isHidden) {
+        dropdown.classList.remove("hidden");
+        if (chevron) chevron.classList.add("rotate-180");
+    } else {
+        dropdown.classList.add("hidden");
+        if (chevron) chevron.classList.remove("rotate-180");
+    }
+}
+
+// Tự động đóng Profile Dropdown khi click ra ngoài
+document.addEventListener("click", function(event) {
+    const dropdown = document.getElementById("user-profile-dropdown");
+    const btn = document.getElementById("user-profile-btn");
+    const chevron = document.getElementById("profile-chevron");
+    if (dropdown && !dropdown.classList.contains("hidden")) {
+        if (!dropdown.contains(event.target) && (!btn || !btn.contains(event.target))) {
+            dropdown.classList.add("hidden");
+            if (chevron) chevron.classList.remove("rotate-180");
+        }
+    }
+});
 
 function showAuthTab(tab) {
     const loginForm = document.getElementById("login-form");
@@ -1784,10 +1827,36 @@ async function loadMyTasksCount() {
     }
 }
 
+// ==========================================
+// QUẢN LÝ THÀNH VIÊN VÀ USER ID
+// ==========================================
+
+function copyMyUserId(e) {
+    if (e) e.stopPropagation();
+    const user = getCurrentUser();
+    if (!user || !user.id) {
+        showToast("Chưa tải được thông tin User ID!", "warning");
+        return;
+    }
+    const idText = String(user.id);
+    navigator.clipboard.writeText(idText).then(() => {
+        showToast(`Đã sao chép User ID của bạn: #${idText}`, "info");
+    }).catch(() => {
+        prompt("User ID của bạn là:", idText);
+    });
+}
+
 async function loadMembers() {
-    if (!currentWorkspaceId) return;
+    if (!currentWorkspaceId) {
+        if (allWorkspaces && allWorkspaces.length > 0) {
+            currentWorkspaceId = allWorkspaces[0].id;
+        } else {
+            return;
+        }
+    }
     const members = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "GET");
     const container = document.getElementById("members-list");
+    if (!container) return;
     container.innerHTML = "";
 
     if (!members || members.length === 0) {
@@ -1824,21 +1893,34 @@ async function loadMembers() {
 
 async function handleAddMember(e) {
     e.preventDefault();
-    if (!currentWorkspaceId) return;
-    const userId = document.getElementById("new-member-userid").value.trim();
+    if (!currentWorkspaceId) {
+        if (allWorkspaces && allWorkspaces.length > 0) {
+            currentWorkspaceId = allWorkspaces[0].id;
+        } else {
+            showToast("Vui lòng chọn hoặc tạo dự án trước!", "warning");
+            return;
+        }
+    }
+    const inputEl = document.getElementById("new-member-userid");
+    const userId = inputEl.value.trim();
+    if (!userId) return;
 
     const res = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "POST", { user_id: userId });
     if (res) {
-        document.getElementById("new-member-userid").value = "";
+        showToast("Thêm thành viên thành công!", "success");
+        inputEl.value = "";
         loadMembers();
+        loadAllData();
     }
 }
 
 async function handleRemoveMember(userId) {
     if (!confirm(`Bạn có chắc muốn xóa thành viên #${userId}?`)) return;
     const res = await apiCall(`/workspaces/${currentWorkspaceId}/members/${userId}`, "DELETE");
-    if (res) {
+    if (res !== null) {
+        showToast("Đã xóa thành viên khỏi dự án!", "info");
         loadMembers();
+        loadAllData();
     }
 }
 
