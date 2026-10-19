@@ -146,7 +146,7 @@ body {
 }
 
 .fc-event {
-    cursor: grab !important;
+    cursor: pointer !important;
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
@@ -159,10 +159,45 @@ body {
     max-width: 100% !important;
     overflow: hidden !important;
     min-width: 0 !important;
+    height: 100% !important;
 }
 
 .fc-event:active {
-    cursor: grabbing !important;
+    cursor: pointer !important;
+}
+
+/* TimeGrid (Week & Day Views) Event Container */
+.fc-timegrid-event {
+    border-radius: 8px !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 1px 2px !important;
+    z-index: 5 !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.fc-timegrid-event:hover {
+    z-index: 30 !important;
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.25) !important;
+}
+
+.fc-timegrid-event .fc-event-main {
+    height: 100% !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Restrict resize handle to bottom 6px to avoid covering the clickable body */
+.fc-timegrid-event .fc-event-resizer-end {
+    height: 6px !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 8 !important;
+    cursor: ns-resize !important;
 }
 
 .fc-event-badge {
@@ -254,17 +289,90 @@ body {
     border-radius: 6px;
 }
 
-/* Google Calendar Current Time Red Line Indicator */
+/* Modern Interactive Live Time Indicator (Google Calendar / Linear Style) */
 .fc .fc-timegrid-now-indicator-line {
-    border-color: #ef4444 !important;
-    border-width: 2px !important;
-    z-index: 10;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: none !important;
+    height: 2px !important;
+    background: linear-gradient(90deg, #f43f5e 0%, #fb7185 75%, rgba(244, 63, 94, 0.3) 100%) !important;
+    box-shadow: 0 0 8px rgba(244, 63, 94, 0.6) !important;
+    z-index: 25 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    overflow: visible !important;
+    transition: height 0.15s ease, box-shadow 0.15s ease;
 }
+
+.fc .fc-timegrid-now-indicator-line:hover {
+    height: 3px !important;
+    box-shadow: 0 0 14px rgba(244, 63, 94, 0.9) !important;
+}
+
+.fc-now-indicator-badge {
+    position: absolute;
+    top: -12px;
+    left: 10px;
+    background: #f43f5e;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 3.5px 9px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(244, 63, 94, 0.45);
+    border: 1.5px solid #ffffff;
+    letter-spacing: -0.01em;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.fc-now-indicator-badge:hover {
+    transform: scale(1.05);
+    background: #e11d48;
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.6);
+}
+
+.fc-now-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    animation: nowDotPulse 1.4s infinite ease-in-out;
+}
+
+@keyframes nowDotPulse {
+    0%, 100% { transform: scale(0.9); opacity: 0.8; }
+    50% { transform: scale(1.3); opacity: 1; }
+}
+
+/* Arrow in the time axis as modern live dot */
 .fc .fc-timegrid-now-indicator-arrow {
-    border-color: #ef4444 !important;
-    border-width: 5px 0 5px 6px !important;
-    border-top-color: transparent !important;
-    border-bottom-color: transparent !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: none !important;
+    width: 10px !important;
+    height: 10px !important;
+    background: #f43f5e !important;
+    border: 2px solid #ffffff !important;
+    border-radius: 50% !important;
+    margin-top: -5px !important;
+    box-shadow: 0 0 6px rgba(244, 63, 94, 0.8) !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    transition: transform 0.15s ease;
+}
+
+.fc .fc-timegrid-now-indicator-arrow:hover {
+    transform: scale(1.3);
 }
 
 /* Week and Day Grid Slot Styling */

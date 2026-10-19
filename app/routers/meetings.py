@@ -21,6 +21,14 @@ def normalize_dt(dt: Optional[datetime]) -> Optional[datetime]:
         return dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt
 
+def to_utc_datetime(dt: Optional[datetime]) -> Optional[datetime]:
+    """Gắn timezone UTC trước khi trả về client để JSON serialize có hậu tố Z chuẩn."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 def parse_flexible_datetime(val: Optional[Union[str, datetime]]) -> Optional[datetime]:
     """Parse linh hoạt tham số ngày giờ từ query param (hỗ trợ cả khi dấu + bị decode thành khoảng trắng)."""
     if val is None:
@@ -287,8 +295,8 @@ def get_calendar_events(
         events.append(schemas.CalendarEventResponse(
             id=f"meeting-{m.id}",
             title=f"📅 [Họp] {m.title}",
-            start_time=m.start_time,
-            end_time=m.end_time,
+            start_time=to_utc_datetime(m.start_time),
+            end_time=to_utc_datetime(m.end_time),
             event_type="MEETING",
             description=m.description,
             meeting_link=m.meeting_link,
@@ -311,8 +319,8 @@ def get_calendar_events(
         events.append(schemas.CalendarEventResponse(
             id=f"task-{t.id}",
             title=f"📌 [Hạn chót] {t.title}",
-            start_time=t.due_date,
-            end_time=t.due_date,
+            start_time=to_utc_datetime(t.due_date),
+            end_time=to_utc_datetime(t.due_date),
             event_type="TASK_DEADLINE",
             description=t.description,
             task_status=t.status,
