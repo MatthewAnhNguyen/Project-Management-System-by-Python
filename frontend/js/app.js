@@ -1394,6 +1394,10 @@ function initOrRefreshCalendar() {
             slotDuration: '00:30:00',
             dayMaxEvents: 4,
             eventDisplay: 'block', // Luôn hiển thị dạng thẻ khối đặc (solid block) cho mọi sự kiện
+            eventMinHeight: 44,    // Chiều cao tối thiểu đảm bảo sự kiện luôn rõ chữ và icon
+            slotEventOverlap: false,
+            allDaySlot: true,
+            allDayText: 'Cả ngày',
 
             // SỰ KIỆN 1: Click hoặc kéo chọn ô giờ trên lịch tuần/tháng (Google Calendar Quick Create)
             select: function(selectionInfo) {
@@ -1414,6 +1418,10 @@ function initOrRefreshCalendar() {
                         filtered = eventsData.filter(e => e.event_type === currentCalendarFilter);
                     }
 
+                    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+                    const currentUser = getCurrentUser();
+                    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+
                     const fcEvents = filtered.map(e => {
                         const isMeeting = (e.event_type === 'MEETING');
                         let bg = isMeeting ? '#059669' : '#2563eb';
@@ -1426,16 +1434,45 @@ function initOrRefreshCalendar() {
                             else if (e.task_priority === 'LOW') { bg = '#0284c7'; border = '#0369a1'; }
                         }
 
+                        // Xử lý thời lượng rõ ràng trên chế độ xem tuần/ngày
+                        const startDate = new Date(e.start_time);
+                        let endDate;
+
+                        if (isMeeting) {
+                            if (e.end_time) {
+                                endDate = new Date(e.end_time);
+                                if (endDate <= startDate) {
+                                    endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+                                }
+                            } else {
+                                endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+                            }
+                        } else {
+                            // Với Hạn chót Task: đảm bảo hiển thị khối 45 phút tối thiểu để không bị thành đường chỉ mỏng
+                            const origEnd = e.end_time ? new Date(e.end_time) : startDate;
+                            if (origEnd <= startDate) {
+                                endDate = new Date(startDate.getTime() + 45 * 60 * 1000);
+                            } else {
+                                endDate = origEnd;
+                            }
+                        }
+
                         return {
                             id: e.id,
                             title: e.title,
-                            start: e.start_time,
-                            end: e.end_time || e.start_time,
+                            start: startDate,
+                            end: endDate,
                             backgroundColor: bg,
                             borderColor: border,
                             textColor: '#ffffff',
                             allDay: false,
-                            extendedProps: e
+                            editable: isOwner,
+                            durationEditable: isOwner && isMeeting, // Chỉ Owner và chỉ Cuộc họp mới kéo dãn thời lượng
+                            extendedProps: {
+                                ...e,
+                                clean_start: startDate,
+                                clean_end: endDate
+                            }
                         };
                     });
                     successCallback(fcEvents);
@@ -1444,31 +1481,84 @@ function initOrRefreshCalendar() {
                 }
             },
 
-            // Render giao diện thẻ sự kiện đẹp mắt với icon và màu nền đặc rõ ràng
+            // Render giao diện thẻ sự kiện đẹp mắt, phân biệt rõ giữa Lịch Tháng và Lịch Tuần/Ngày
             eventContent: function(arg) {
                 const props = arg.event.extendedProps;
                 const isMeeting = (props.event_type === 'MEETING');
+                const isTimeGrid = arg.view.type.startsWith('timeGrid');
                 const iconClass = isMeeting ? 'fa-solid fa-video' : 'fa-solid fa-thumbtack';
                 const cleanTitle = isMeeting 
                     ? arg.event.title.replace('📅 [Họp] ', '') 
                     : arg.event.title.replace('📌 [Hạn chót] ', '');
                 
-                const timeText = arg.timeText 
-                    ? `<span class="bg-black/20 text-white/95 px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0 mr-1">${arg.timeText}</span>` 
-                    : '';
                 const bg = arg.event.backgroundColor || (isMeeting ? '#059669' : '#2563eb');
                 const border = arg.event.borderColor || bg;
 
+                const startD = arg.event.start;
+                const endD = arg.event.end || startD;
+                const formatTime = d => d ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+                const displayTime = arg.timeText || (startD ? `${formatTime(startD)} - ${formatTime(endD)}` : '');
+
                 const el = document.createElement('div');
-                el.className = 'fc-event-badge flex items-center gap-1.5 px-2 py-1 rounded-md text-white text-xs leading-tight w-full max-w-full min-w-0 overflow-hidden font-bold shadow-xs';
-                el.style.backgroundColor = bg;
-                el.style.border = `1px solid ${border}`;
-                el.title = cleanTitle;
-                el.innerHTML = `
-                    <i class="${iconClass} text-[10px] shrink-0 text-white/90"></i>
-                    ${timeText}
-                    <span class="font-bold truncate min-w-0 flex-1 text-white leading-tight drop-shadow-xs">${cleanTitle}</span>
-                `;
+
+                if (isTimeGrid) {
+                    // CHẾ ĐỘ XEM TUẦN & NGÀY: Hiển thị dạng khối dọc đầy đủ thông tin, màu sắc rõ nét, phủ kín 100% chiều cao
+                    el.className = 'w-full h-full min-h-full rounded-lg p-2 text-white flex flex-col justify-between shadow-xs overflow-hidden select-none cursor-pointer';
+                    el.style.backgroundColor = bg;
+                    el.style.border = `1px solid ${border}`;
+                    el.title = `${cleanTitle} (${displayTime}) - Bấm để xem chi tiết`;
+
+                    const badgeType = isMeeting 
+                        ? `<span class="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0"><i class="fa-solid fa-video mr-1"></i>Họp</span>`
+                        : `<span class="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0"><i class="fa-solid fa-thumbtack mr-1"></i>Hạn chót</span>`;
+
+                    const subInfo = isMeeting 
+                        ? (props.creator_name ? `<div class="text-[10px] text-white/80 truncate mt-0.5"><i class="fa-regular fa-user mr-1 text-[9px]"></i>${props.creator_name}</div>` : '')
+                        : (props.assignee_name ? `<div class="text-[10px] text-white/80 truncate mt-0.5"><i class="fa-regular fa-circle-user mr-1 text-[9px]"></i>${props.assignee_name}</div>` : '');
+
+                    el.innerHTML = `
+                        <div class="flex flex-col gap-0.5 min-w-0">
+                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                <span class="bg-black/30 text-white font-mono text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">${displayTime}</span>
+                                ${badgeType}
+                            </div>
+                            <div class="font-extrabold text-xs text-white leading-snug line-clamp-2 break-words drop-shadow-xs">
+                                ${cleanTitle}
+                            </div>
+                            ${subInfo}
+                        </div>
+                        <div class="pt-1 flex items-center justify-between text-[10px] text-white/75 border-t border-white/20 mt-1">
+                            <span class="flex items-center gap-1 font-semibold"><i class="fa-regular fa-eye text-[9px]"></i> Chi tiết</span>
+                            <i class="fa-solid fa-chevron-right text-[8px] opacity-70"></i>
+                        </div>
+                    `;
+                } else {
+                    // CHẾ ĐỘ XEM THÁNG: Hiển thị thanh ngang 1 dòng gọn gàng, trang nhã
+                    el.className = 'fc-event-badge flex items-center gap-1.5 px-2 py-1 rounded-md text-white text-xs leading-tight w-full max-w-full min-w-0 overflow-hidden font-bold shadow-xs cursor-pointer';
+                    el.style.backgroundColor = bg;
+                    el.style.border = `1px solid ${border}`;
+                    el.title = cleanTitle;
+                    const timeSpan = arg.timeText 
+                        ? `<span class="bg-black/20 text-white/95 px-1.5 py-0.5 rounded text-[10px] font-mono shrink-0 mr-1">${arg.timeText}</span>` 
+                        : '';
+                    el.innerHTML = `
+                        <i class="${iconClass} text-[10px] shrink-0 text-white/90"></i>
+                        ${timeSpan}
+                        <span class="font-bold truncate min-w-0 flex-1 text-white leading-tight drop-shadow-xs">${cleanTitle}</span>
+                    `;
+                }
+
+                // GẮN LISTENER CLICK TRỰC TIẾP LÊN THẺ ĐỂ ĐẢM BẢO 100% ĂN NGAY KHI CLICK
+                el.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    if (props.event_type === 'MEETING') {
+                        openMeetingDetail(arg.event);
+                    } else {
+                        const taskId = String(props.id).replace('task-', '');
+                        openTaskDetail(taskId);
+                    }
+                });
+
                 return { domNodes: [el] };
             },
 
