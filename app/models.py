@@ -1,5 +1,6 @@
 import secrets
 import string
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
 from .database import Base
@@ -20,7 +21,7 @@ class User(Base):
     role = Column(String(20), default="member")  # VD: admin, manager, member
 
     # Hàm func.now() sẽ lấy thời gian hiện tại của database khi tạo user
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
     workspaces_owned = relationship("Workspace", back_populates="owner")
     comments = relationship("TaskComment", back_populates="user")
 

@@ -56,40 +56,56 @@ async function apiCall(endpoint, method = "GET", body = null) {
         options.body = JSON.stringify(body);
     }
 
+    let response;
     try {
-        const response = await fetch(`${API_BASE}${endpoint}`, options);
-        if (response.status === 401) {
-            // Nếu đang gọi API đăng nhập / xác thực: hiển thị đúng thông báo lỗi từ backend
-            if (endpoint.startsWith("/auth/")) {
-                let errorMsg = "Email hoặc mật khẩu không chính xác!";
-                try {
-                    const errData = await response.json();
-                    if (errData && errData.detail) errorMsg = errData.detail;
-                } catch (e) {}
-                alert(errorMsg + "\n(Nếu bạn chưa đăng ký tài khoản trên thư mục này, vui lòng chuyển sang tab 'Đăng ký')");
-                return null;
-            }
-            // Chỉ cảnh báo hết hạn và logout khi đang trong phiên làm việc của user đã đăng nhập
-            if (getToken()) {
-                alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
-                handleLogout();
-            }
-            return null;
-        }
-        if (response.status === 204) {
-            return true;
-        }
-        const data = await response.json();
-        if (!response.ok) {
-            alert(data.detail || "Đã xảy ra lỗi, vui lòng kiểm tra lại!");
-            return null;
-        }
-        return data;
-    } catch (err) {
-        console.error("API Error:", err);
+        response = await fetch(`${API_BASE}${endpoint}`, options);
+    } catch (netErr) {
+        console.error("Network Error:", netErr);
         alert("Không thể kết nối đến máy chủ FastAPI Backend! Hãy chắc chắn server đang chạy tại port 8000.");
         return null;
     }
+
+    if (response.status === 204) {
+        return true;
+    }
+
+    let data = null;
+    try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+    } catch (parseErr) {
+        data = { detail: "Phản hồi từ máy chủ không hợp lệ." };
+    }
+
+    if (response.status === 401) {
+        if (endpoint.startsWith("/auth/")) {
+            let errorMsg = (data && data.detail) ? data.detail : "Email hoặc mật khẩu không chính xác!";
+            alert(errorMsg + "\n(Nếu bạn chưa đăng ký tài khoản, vui lòng chuyển sang tab 'Đăng ký')");
+            return null;
+        }
+        if (getToken()) {
+            alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+            handleLogout();
+        }
+        return null;
+    }
+
+    if (!response.ok) {
+        let msg = "Đã xảy ra lỗi, vui lòng kiểm tra lại!";
+        if (data && data.detail) {
+            if (typeof data.detail === "string") {
+                msg = data.detail;
+            } else if (Array.isArray(data.detail)) {
+                msg = data.detail.map(d => d.msg || JSON.stringify(d)).join("\n");
+            } else {
+                msg = JSON.stringify(data.detail);
+            }
+        }
+        alert(msg);
+        return null;
+    }
+
+    return data;
 }
 
 

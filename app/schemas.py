@@ -14,10 +14,19 @@ class UserResponse(BaseModel):
     username: str
     email: str
     role: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True # Bắt buộc có để chuyển đổi dữ liệu từ SQLAlchemy sang Pydantic
+
+    @field_validator('created_at', mode='before')
+    @classmethod
+    def ensure_utc(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
 class UserSimpleResponse(BaseModel):
     id: str
