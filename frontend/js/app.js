@@ -1387,7 +1387,36 @@ function initOrRefreshCalendar() {
             unselectAuto: true,
             editable: true,         // Kéo thả (drag & drop) dời lịch & co giãn thời lượng
             eventResizableFromStart: false,
-            nowIndicator: false,    // Tắt vạch đỏ mốc giờ hiện tại để giao diện sạch sẽ, chuyên nghiệp
+            nowIndicator: true,     // Bật mốc thời gian hiện tại
+            nowIndicatorDidMount: function(arg) {
+                arg.el.style.pointerEvents = 'auto';
+                arg.el.style.cursor = 'pointer';
+                arg.el.title = "Mốc thời gian hiện tại - Nhấn vào để lên lịch ngay bây giờ";
+
+                if (!arg.isAxis) {
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    arg.el.innerHTML = `
+                        <div class="fc-now-indicator-badge">
+                            <span class="fc-now-dot"></span>
+                            <span>${timeStr} • Nhấn để tạo lịch</span>
+                        </div>
+                    `;
+                }
+
+                arg.el.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const now = new Date();
+                    const end = new Date(now.getTime() + 60 * 60 * 1000);
+                    openCreateCalendarEventModal({
+                        start: now,
+                        end: end,
+                        allDay: false
+                    });
+                    showToast("⏰ Đang lên lịch tại mốc thời gian hiện tại!", "info");
+                };
+            },
             scrollTime: '08:00:00', // Cuộn mặc định tới 8h sáng
             slotMinTime: '06:00:00',
             slotMaxTime: '23:00:00',
