@@ -281,10 +281,9 @@ def remove_workspace_member(workspace_id: str, user_id: str, db: Session = Depen
 
     # Tìm record thành viên
     clean_user_id = str(user_id).replace('#', '').strip()
-    target_user_id = int(clean_user_id) if clean_user_id.isdigit() else user_id
     member_to_remove = db.query(models.WorkspaceMember).filter(
         models.WorkspaceMember.workspace_id == str(workspace.id),
-        models.WorkspaceMember.user_id == target_user_id
+        or_(models.WorkspaceMember.user_id == clean_user_id, models.WorkspaceMember.user_id == str(user_id))
     ).first()
 
     if not member_to_remove:

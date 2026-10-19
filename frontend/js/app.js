@@ -439,12 +439,24 @@ async function loadWorkspaceDetails() {
 
         const ownerBadge = document.getElementById("current-board-owner-badge");
         const currentUser = getCurrentUser();
-        const isOwner = currentUser && (String(currentWs.owner_id) === String(currentUser.id));
+        const isOwner = currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
         if (ownerBadge) {
             ownerBadge.textContent = isOwner ? "Owner (Bạn)" : `Chủ dự án #${currentWs.owner_id}`;
             ownerBadge.className = isOwner 
                 ? "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800"
                 : "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700";
+        }
+
+        // Ẩn/Hiện nút Add Task & Lên lịch cho Member
+        const boardAddBtn = document.getElementById("board-add-task-btn");
+        if (boardAddBtn) {
+            if (isOwner) boardAddBtn.classList.remove("hidden");
+            else boardAddBtn.classList.add("hidden");
+        }
+        const calCreateBtn = document.getElementById("cal-create-event-btn");
+        if (calCreateBtn) {
+            if (isOwner) calCreateBtn.classList.remove("hidden");
+            else calCreateBtn.classList.add("hidden");
         }
 
         const descEl = document.getElementById("current-board-project-desc");
@@ -569,6 +581,12 @@ function createTaskCardElement(task) {
         ? task.assignee.username.substring(0, 1).toUpperCase()
         : "?";
 
+    // Phân quyền đổi trạng thái nhanh: CHỈ OWNER
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(task.workspace_id || currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    const canChangeStatus = isOwner;
+
     card.innerHTML = `
         <h5 class="font-bold text-xs text-slate-800 leading-snug line-clamp-2">${task.title}</h5>
         <div class="flex items-center gap-1.5 flex-wrap">
@@ -579,7 +597,7 @@ function createTaskCardElement(task) {
         <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400 font-medium">
             <span>${dateStr}</span>
             <div class="flex items-center gap-1.5">
-                <select onclick="event.stopPropagation()" onchange="handleQuickTaskStatusChange(${task.id}, this.value, event)" class="text-[10px] font-bold py-0.5 px-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-400 focus:outline-none cursor-pointer">
+                <select onclick="event.stopPropagation()" onchange="handleQuickTaskStatusChange(${task.id}, this.value, event)" ${!canChangeStatus ? 'disabled title="Chỉ Chủ sở hữu (Owner) mới có quyền đổi trạng thái"' : ''} class="text-[10px] font-bold py-0.5 px-1.5 rounded-lg border border-slate-200 ${canChangeStatus ? 'bg-slate-50 text-slate-700 hover:border-blue-400 cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-75'} focus:outline-none">
                     <option value="TODO" ${task.status === 'TODO' ? 'selected' : ''}>TODO</option>
                     <option value="IN_PROGRESS" ${task.status === 'IN_PROGRESS' ? 'selected' : ''}>IN PROGRESS</option>
                     <option value="REVIEW" ${task.status === 'REVIEW' ? 'selected' : ''}>REVIEW</option>
@@ -760,6 +778,62 @@ async function openTaskDetail(taskId) {
     // Đổ danh sách người làm và chọn người hiện tại
     await populateTaskAssigneeSelect("detail-task-assignee-select", task.assignee_id);
 
+    // Phân quyền trong Modal chi tiết:
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(task.workspace_id || currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    const canChangeStatus = isOwner;
+
+    // Nút xóa task & nút chuyển cuộc họp: chỉ Owner mới thấy
+    const delBtn = document.getElementById("modal-delete-task-btn");
+    if (delBtn) {
+        if (isOwner) delBtn.classList.remove("hidden");
+        else delBtn.classList.add("hidden");
+    }
+    const convertBtn = document.getElementById("modal-convert-meeting-btn");
+    if (convertBtn) {
+        if (isOwner) convertBtn.classList.remove("hidden");
+        else convertBtn.classList.add("hidden");
+    }
+
+    // Assignee dropdown: Chỉ Owner mới được phân công lại
+    const assigneeSelect = document.getElementById("detail-task-assignee-select");
+    if (assigneeSelect) {
+        assigneeSelect.disabled = !isOwner;
+        if (!isOwner) {
+            assigneeSelect.classList.add("opacity-70", "cursor-not-allowed");
+            assigneeSelect.title = "Chỉ Owner của Workspace mới có quyền phân công người làm";
+        } else {
+            assigneeSelect.classList.remove("opacity-70", "cursor-not-allowed");
+            assigneeSelect.title = "Chọn người thực hiện";
+        }
+    }
+
+    // Status select và status pills: Chỉ Owner mới được chuyển
+    if (statusSelect) {
+        statusSelect.disabled = !canChangeStatus;
+        if (!canChangeStatus) {
+            statusSelect.classList.add("opacity-70", "cursor-not-allowed");
+            statusSelect.title = "Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền cập nhật trạng thái";
+        } else {
+            statusSelect.classList.remove("opacity-70", "cursor-not-allowed");
+            statusSelect.title = "";
+        }
+    }
+    ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'CANCELLED'].forEach(st => {
+        const pill = document.getElementById(`pill-${st}`);
+        if (pill) {
+            pill.disabled = !canChangeStatus;
+            if (!canChangeStatus) {
+                pill.classList.add("cursor-not-allowed");
+                pill.title = "Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền cập nhật trạng thái";
+            } else {
+                pill.classList.remove("cursor-not-allowed");
+                pill.title = "";
+            }
+        }
+    });
+
     switchTaskDetailTab("comments");
     loadTaskComments(taskId);
     loadTaskActivities(taskId);
@@ -768,13 +842,46 @@ async function openTaskDetail(taskId) {
 
 async function handleReassignTask(newAssigneeId) {
     if (!currentTaskId) return;
-    const assignee = newAssigneeId ? parseInt(newAssigneeId) : null;
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền phân công người làm!", "error");
+        return;
+    }
+    const assignee = (newAssigneeId && newAssigneeId.trim() !== "") ? String(newAssigneeId).trim() : null;
     const res = await apiCall(`/tasks/${currentTaskId}`, "PUT", { assignee_id: assignee });
     if (res) {
+        currentTaskData = res;
         showToast("Đã phân công lại người làm!");
         loadWorkspaceDetails();
         loadTaskActivities(currentTaskId);
         loadRecentActivitiesWidget();
+        loadMyTasksCount();
+    }
+}
+
+async function handleDeleteCurrentTask() {
+    if (!currentTaskId) return;
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền xóa công việc!", "error");
+        return;
+    }
+    const title = currentTaskData ? currentTaskData.title : `#${currentTaskId}`;
+    if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn công việc "${title}"?`)) return;
+
+    const res = await apiCall(`/tasks/${currentTaskId}`, "DELETE");
+    if (res !== null) {
+        showToast("Đã xóa công việc thành công!");
+        closeModal("task-detail-modal");
+        currentTaskId = null;
+        currentTaskData = null;
+        loadWorkspaceDetails();
+        loadRecentActivitiesWidget();
+        loadMyTasksCount();
     }
 }
 
@@ -864,6 +971,13 @@ function updateModalStatusPills(currentStatus) {
 // Xử lý đổi trạng thái task từ bên trong Modal chi tiết
 async function handleModalTaskStatusChange(newStatus) {
     if (!currentTaskId) return;
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentTaskData ? currentTaskData.workspace_id : currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền chuyển trạng thái công việc!", "warning");
+        return;
+    }
     try {
         const res = await apiCall(`/tasks/${currentTaskId}`, "PUT", { status: newStatus });
         if (res) {
@@ -896,6 +1010,18 @@ async function handleModalTaskStatusChange(newStatus) {
 async function handleQuickTaskStatusChange(taskId, newStatus, event) {
     if (event) {
         event.stopPropagation();
+    }
+    const targetTask = currentWorkspaceTasks.find(t => String(t.id) === String(taskId)) || currentTaskData;
+    const wsId = targetTask ? targetTask.workspace_id : currentWorkspaceId;
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(wsId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền chuyển trạng thái công việc!", "warning");
+        if (event && event.target) {
+            loadWorkspaceDetails();
+        }
+        return;
     }
     try {
         const res = await apiCall(`/tasks/${taskId}`, "PUT", { status: newStatus });
@@ -1050,6 +1176,14 @@ async function handleCreateTask(e) {
     e.preventDefault();
     if (!currentWorkspaceId) return;
 
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền tạo và gán công việc!", "error");
+        return;
+    }
+
     const title = document.getElementById("task-title").value.trim();
     const description = document.getElementById("task-desc").value.trim();
     const priority = document.getElementById("task-priority").value;
@@ -1062,7 +1196,7 @@ async function handleCreateTask(e) {
         priority,
         status: "TODO",
         due_date: dueVal ? new Date(dueVal).toISOString() : null,
-        assignee_id: assigneeVal ? parseInt(assigneeVal) : null
+        assignee_id: (assigneeVal && assigneeVal.trim() !== "") ? String(assigneeVal).trim() : null
     };
 
     const res = await apiCall(`/workspaces/${currentWorkspaceId}/tasks`, "POST", payload);
@@ -1373,6 +1507,15 @@ function initOrRefreshCalendar() {
 
 // Xử lý kéo thả sự kiện sang giờ/ngày mới
 async function handleEventDrop(info) {
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        info.revert();
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền dời lịch!", "warning");
+        return;
+    }
+
     const props = info.event.extendedProps;
     const isMeeting = (props.event_type === 'MEETING');
     const rawId = props.id.replace(isMeeting ? 'meeting-' : 'task-', '');
@@ -1412,6 +1555,15 @@ async function handleEventDrop(info) {
 
 // Xử lý kéo dãn thời lượng cuộc họp
 async function handleEventResize(info) {
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        info.revert();
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền thay đổi thời lượng!", "warning");
+        return;
+    }
+
     const props = info.event.extendedProps;
     if (props.event_type !== 'MEETING') {
         info.revert();
@@ -1465,6 +1617,15 @@ function setCalendarFilter(filter) {
 
 // Mở Modal tạo lịch (Google Calendar Style) với khung giờ được click / kéo chọn
 async function openCreateCalendarEventModal(selectionInfo = null) {
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+    if (!isOwner) {
+        showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền tạo sự kiện và lên lịch!", "warning");
+        if (calendarInstance) calendarInstance.unselect();
+        return;
+    }
+
     calendarModalMode = 'CREATE';
     calendarModalType = 'MEETING';
 
@@ -1618,7 +1779,8 @@ async function populateCalendarAssigneeSelect() {
         members.forEach(m => {
             const opt = document.createElement("option");
             opt.value = m.user_id;
-            opt.textContent = `Thành viên #${m.user_id} (${m.role})`;
+            const uname = (m.user && m.user.username) ? m.user.username : `User #${m.user_id}`;
+            opt.textContent = `${uname} (${m.role})`;
             select.appendChild(opt);
         });
     }
@@ -1687,7 +1849,10 @@ async function handleCalendarEventSubmit(e) {
         // TẠO TASK KÈM HẠN CHÓT TRÊN LỊCH
         const priority = document.getElementById("cal-task-priority").value;
         const statusVal = document.getElementById("cal-task-status").value;
-        const assigneeId = document.getElementById("cal-task-assignee").value || null;
+        const assigneeEl = document.getElementById("cal-task-assignee");
+        const assigneeId = (assigneeEl && assigneeEl.value && assigneeEl.value.trim() !== "")
+            ? String(assigneeEl.value).trim()
+            : null;
         const desc = document.getElementById("cal-task-desc").value.trim() || null;
 
         const payload = {
@@ -1800,12 +1965,13 @@ async function loadMyTasks() {
         const d = parseUTCDate(t.due_date);
         const dueStr = d ? d.toLocaleDateString('vi-VN') : 'Không hạn';
 
-        item.innerHTML = `
-            <div>
-                <h5 class="text-sm font-bold text-slate-900">${t.title}</h5>
-                <p class="text-xs text-slate-400 mt-0.5">Hạn chót: ${dueStr}</p>
-            </div>
-            <div class="flex items-center gap-3">
+        const wsOfTask = allWorkspaces.find(w => String(w.id) === String(t.workspace_id));
+        const currentUser = getCurrentUser();
+        const isWsOwner = wsOfTask && currentUser && (String(wsOfTask.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+
+        let statusActionHtml = '';
+        if (isWsOwner) {
+            statusActionHtml = `
                 <select onclick="event.stopPropagation()" onchange="handleQuickTaskStatusChange(${t.id}, this.value, event)" class="text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-xs focus:outline-none hover:border-blue-400 cursor-pointer">
                     <option value="TODO" ${t.status === 'TODO' ? 'selected' : ''}>To Do</option>
                     <option value="IN_PROGRESS" ${t.status === 'IN_PROGRESS' ? 'selected' : ''}>In Progress</option>
@@ -1813,6 +1979,26 @@ async function loadMyTasks() {
                     <option value="DONE" ${t.status === 'DONE' ? 'selected' : ''}>Done</option>
                     <option value="CANCELLED" ${t.status === 'CANCELLED' ? 'selected' : ''}>Cancelled</option>
                 </select>
+            `;
+        } else {
+            const statusLabels = {
+                'TODO': 'bg-slate-100 text-slate-700',
+                'IN_PROGRESS': 'bg-blue-100 text-blue-700',
+                'REVIEW': 'bg-amber-100 text-amber-700',
+                'DONE': 'bg-emerald-100 text-emerald-700',
+                'CANCELLED': 'bg-rose-100 text-rose-700'
+            };
+            const colorClass = statusLabels[t.status] || 'bg-slate-100 text-slate-700';
+            statusActionHtml = `<span class="text-xs font-bold px-3 py-1 rounded-xl ${colorClass}" title="Chỉ Owner của Workspace mới có quyền đổi trạng thái">${t.status}</span>`;
+        }
+
+        item.innerHTML = `
+            <div>
+                <h5 class="text-sm font-bold text-slate-900">${t.title}</h5>
+                <p class="text-xs text-slate-400 mt-0.5">Hạn chót: ${dueStr}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                ${statusActionHtml}
             </div>
         `;
         container.appendChild(item);
@@ -1854,6 +2040,16 @@ async function loadMembers() {
             return;
         }
     }
+    const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+    const currentUser = getCurrentUser();
+    const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+
+    const addMemberCard = document.getElementById("add-member-card");
+    if (addMemberCard) {
+        if (isOwner) addMemberCard.classList.remove("hidden");
+        else addMemberCard.classList.add("hidden");
+    }
+
     const members = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "GET");
     const container = document.getElementById("members-list");
     if (!container) return;
@@ -1884,7 +2080,7 @@ async function loadMembers() {
             </div>
             <div class="flex items-center gap-3">
                 <span class="text-xs font-bold px-2.5 py-1 rounded-full ${m.role === 'OWNER' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}">${m.role}</span>
-                ${m.role !== 'OWNER' ? `<button onclick="handleRemoveMember('${m.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-semibold py-1 px-2 rounded-lg hover:bg-rose-50 transition">Xóa</button>` : ''}
+                ${(m.role !== 'OWNER' && isOwner) ? `<button onclick="handleRemoveMember('${m.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-semibold py-1 px-2 rounded-lg hover:bg-rose-50 transition">Xóa</button>` : ''}
             </div>
         `;
         container.appendChild(item);
@@ -1979,6 +2175,15 @@ async function loadFullActivities() {
 // ==========================================
 
 function openModal(id) {
+    if (id === "create-task-modal") {
+        const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
+        const currentUser = getCurrentUser();
+        const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
+        if (!isOwner) {
+            showToast("Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền tạo và gán công việc!", "warning");
+            return;
+        }
+    }
     const el = document.getElementById(id);
     if (el) {
         el.classList.remove("hidden");

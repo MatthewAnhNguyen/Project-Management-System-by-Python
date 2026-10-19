@@ -371,7 +371,7 @@
                                     </div>
                                 </div>
 
-                                <button onclick="openModal('create-task-modal')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 flex items-center gap-2 transition">
+                                <button id="board-add-task-btn" onclick="openModal('create-task-modal')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 flex items-center gap-2 transition">
                                     <i class="fa-solid fa-plus text-xs"></i> Add Task
                                 </button>
                             </div>
@@ -456,7 +456,7 @@
 
                         <!-- Create Event Button -->
                         <div class="flex items-center gap-2.5">
-                            <button onclick="openCreateCalendarEventModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 flex items-center gap-2 transition">
+                            <button id="cal-create-event-btn" onclick="openCreateCalendarEventModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 flex items-center gap-2 transition">
                                 <i class="fa-solid fa-plus text-xs"></i> Tạo lịch mới
                             </button>
                         </div>
@@ -487,7 +487,7 @@
 
                 <!-- VIEW 4: TEAM MEMBERS (KHI CHỌN TEAM Ở SIDEBAR) -->
                 <div id="view-team" class="hidden space-y-6">
-                    <div class="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+                    <div id="add-member-card" class="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
                         <h3 class="text-base font-extrabold text-slate-900">Mời thành viên mới vào dự án</h3>
                         <form onsubmit="handleAddMember(event)" class="flex gap-3">
                             <input type="text" id="new-member-userid" required placeholder="Nhập User ID (VD: 2 hoặc chuỗi ID)..." class="flex-1 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
@@ -607,7 +607,13 @@
                         </select>
                     </div>
                 </div>
-                <button onclick="closeModal('task-detail-modal')" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <div class="flex items-center gap-2">
+                    <button id="modal-delete-task-btn" type="button" onclick="handleDeleteCurrentTask()" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5" title="Xóa công việc này (Chỉ Owner)">
+                        <i class="fa-regular fa-trash-can text-xs"></i>
+                        <span>Xóa</span>
+                    </button>
+                    <button onclick="closeModal('task-detail-modal')" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
             </div>
 
             <!-- Body Task Info -->
@@ -624,7 +630,7 @@
                         </div>
                     </div>
                     <!-- Nút Chuyển thành Cuộc họp -->
-                    <button type="button" onclick="convertCurrentTaskToMeeting()" class="text-emerald-700 hover:text-emerald-900 text-xs font-bold py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 border border-emerald-200/60 shadow-xs">
+                    <button id="modal-convert-meeting-btn" type="button" onclick="convertCurrentTaskToMeeting()" class="text-emerald-700 hover:text-emerald-900 text-xs font-bold py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 border border-emerald-200/60 shadow-xs">
                         <i class="fa-solid fa-arrow-right-arrow-left text-[10px]"></i>
                         <span>Chuyển thành Cuộc họp</span>
                     </button>
@@ -988,6 +994,6 @@
     <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Main JavaScript Logic -->
-    <script src="js/app.js?v=6"></script>
+    <script src="js/app.js?v=9"></script>
 </body>
 </html>
