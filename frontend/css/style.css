@@ -289,17 +289,12 @@ body {
     border-radius: 6px;
 }
 
-/* Google Calendar Current Time Red Line Indicator */
-.fc .fc-timegrid-now-indicator-line {
-    border-color: #ef4444 !important;
-    border-width: 2px !important;
-    z-index: 10;
-}
+/* Hide Current Time Indicator Line & Arrow */
+.fc .fc-timegrid-now-indicator-line,
 .fc .fc-timegrid-now-indicator-arrow {
-    border-color: #ef4444 !important;
-    border-width: 5px 0 5px 6px !important;
-    border-top-color: transparent !important;
-    border-bottom-color: transparent !important;
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 
 /* Week and Day Grid Slot Styling */

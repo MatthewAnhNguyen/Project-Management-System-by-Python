@@ -1387,7 +1387,7 @@ function initOrRefreshCalendar() {
             unselectAuto: true,
             editable: true,         // Kéo thả (drag & drop) dời lịch & co giãn thời lượng
             eventResizableFromStart: false,
-            nowIndicator: true,     // Dải màu đỏ đánh dấu mốc giờ hiện tại trên lịch tuần/ngày
+            nowIndicator: false,    // Tắt vạch đỏ mốc giờ hiện tại để giao diện sạch sẽ, chuyên nghiệp
             scrollTime: '08:00:00', // Cuộn mặc định tới 8h sáng
             slotMinTime: '06:00:00',
             slotMaxTime: '23:00:00',
