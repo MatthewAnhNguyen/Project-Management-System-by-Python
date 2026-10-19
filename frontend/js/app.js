@@ -269,6 +269,9 @@ function switchSidebarView(view) {
         loadWorkspaceDetails();
     } else if (view === "calendar") {
         initOrRefreshCalendar();
+        if (calendarInstance) {
+            calendarInstance.refetchEvents();
+        }
         setTimeout(() => {
             if (calendarInstance) calendarInstance.updateSize();
         }, 60);
@@ -882,6 +885,9 @@ async function handleDeleteCurrentTask() {
         loadWorkspaceDetails();
         loadRecentActivitiesWidget();
         loadMyTasksCount();
+        if (calendarInstance) {
+            calendarInstance.refetchEvents();
+        }
     }
 }
 
@@ -1211,6 +1217,9 @@ async function handleCreateTask(e) {
         showToast("Đã tạo task mới thành công!");
         loadWorkspaceDetails();
         loadRecentActivitiesWidget();
+        if (calendarInstance) {
+            calendarInstance.refetchEvents();
+        }
     }
 }
 
@@ -1361,6 +1370,16 @@ function formatDateTimeLocal(d) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Helper an toàn parse chuỗi ngày giờ từ API đảm bảo đồng bộ chuẩn xác múi giờ địa phương
+function parseApiDateTime(str) {
+    if (!str) return null;
+    let s = String(str).trim();
+    if (s.includes('T') && !s.endsWith('Z') && !s.includes('+') && !/-\d\d:\d\d$/.test(s)) {
+        s += 'Z';
+    }
+    return new Date(s);
+}
+
 function initOrRefreshCalendar() {
     const calEl = document.getElementById("calendar-container");
 
@@ -1427,6 +1446,14 @@ function initOrRefreshCalendar() {
             slotEventOverlap: false,
             allDaySlot: true,
             allDayText: 'Cả ngày',
+            datesSet: function(info) {
+                // Tự động cập nhật kích thước khi chuyển qua lại giữa Tháng / Tuần / Ngày
+                if (calendarInstance) {
+                    setTimeout(() => {
+                        calendarInstance.updateSize();
+                    }, 50);
+                }
+            },
 
             // SỰ KIỆN 1: Click hoặc kéo chọn ô giờ trên lịch tuần/tháng (Google Calendar Quick Create)
             select: function(selectionInfo) {
@@ -1463,26 +1490,18 @@ function initOrRefreshCalendar() {
                             else if (e.task_priority === 'LOW') { bg = '#0284c7'; border = '#0369a1'; }
                         }
 
-                        // Xử lý thời lượng rõ ràng trên chế độ xem tuần/ngày
-                        const startDate = new Date(e.start_time);
-                        let endDate;
+                        // Parse ngày giờ an toàn tuyệt đối theo chuẩn UTC đồng bộ giờ địa phương
+                        const startDate = parseApiDateTime(e.start_time);
+                        let endDate = e.end_time ? parseApiDateTime(e.end_time) : null;
 
                         if (isMeeting) {
-                            if (e.end_time) {
-                                endDate = new Date(e.end_time);
-                                if (endDate <= startDate) {
-                                    endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-                                }
-                            } else {
+                            if (!endDate || endDate <= startDate) {
                                 endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
                             }
                         } else {
                             // Với Hạn chót Task: đảm bảo hiển thị khối 45 phút tối thiểu để không bị thành đường chỉ mỏng
-                            const origEnd = e.end_time ? new Date(e.end_time) : startDate;
-                            if (origEnd <= startDate) {
+                            if (!endDate || endDate <= startDate) {
                                 endDate = new Date(startDate.getTime() + 45 * 60 * 1000);
-                            } else {
-                                endDate = origEnd;
                             }
                         }
 

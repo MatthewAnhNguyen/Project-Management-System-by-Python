@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, field_validator
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 # 1. Schema cho dữ liệu người dùng gửi lên (Request)
@@ -117,6 +117,13 @@ class TaskResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator('due_date', 'created_at', 'updated_at', mode='before')
+    @classmethod
+    def ensure_utc(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
+
 # --- (MỚI) SCHEMAS CHO BÌNH LUẬN (COMMENTS) ---
 class CommentCreate(BaseModel):
     content: str
@@ -198,6 +205,13 @@ class MeetingResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator('start_time', 'end_time', 'created_at', mode='before')
+    @classmethod
+    def ensure_utc(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
+
 class WorkspaceActivityResponse(BaseModel):
     id: int
     workspace_id: str
@@ -227,3 +241,10 @@ class CalendarEventResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator('start_time', 'end_time', mode='before')
+    @classmethod
+    def ensure_utc(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
