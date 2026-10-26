@@ -4,10 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.database import engine, Base
-# Import các router
 from app.routers import auth, users, workspaces, tasks, comments, meetings
 
-# Tạo database
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -16,7 +14,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# --- CẤU HÌNH CORS CHO PHÉP FRONTEND GỌI API ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- NGĂN TRÌNH DUYỆT CACHE FILE CŨ (BẬT NO-CACHE TOÀN BỘ) ---
 @app.middleware("http")
 async def add_no_cache_headers(request, call_next):
     response = await call_next(request)
@@ -35,7 +31,6 @@ async def add_no_cache_headers(request, call_next):
     return response
 
 
-# --- GẮN CÁC ROUTER VÀO APP CHÍNH ---
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(workspaces.router)
@@ -43,7 +38,6 @@ app.include_router(tasks.router)
 app.include_router(comments.router)
 app.include_router(meetings.router)
 
-# --- PHỤC VỤ FILE TĨNH VÀ GIAO DIỆN FRONTEND ---
 if os.path.exists("frontend/css"):
     app.mount("/css", StaticFiles(directory="frontend/css"), name="css")
 if os.path.exists("frontend/js"):
@@ -55,7 +49,6 @@ def serve_frontend():
         return FileResponse("frontend/index.html")
     return {"message": "Project Management System API is running"}
 
-# API kiểm tra server
 @app.get("/health", tags=["System"])
 def health_check():
     return {"message": "Server is running perfectly"}

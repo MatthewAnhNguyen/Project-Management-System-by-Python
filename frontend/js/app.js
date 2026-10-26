@@ -1,7 +1,3 @@
-/**
- * ProjectManage - Frontend Controller (Linear/Modern SaaS Dashboard Style)
- * Kết nối REST API FastAPI
- */
 
 const API_BASE = (window.location.port === "8000") ? "" : "http://127.0.0.1:8000";
 
@@ -12,15 +8,12 @@ let currentTaskId = null;
 let currentMeetingId = null;
 let calendarInstance = null;
 let activeSidebarView = "home";
-let currentCalendarFilter = "ALL"; // ALL, MEETING, TASK_DEADLINE
-let calendarModalType = "MEETING";  // MEETING or TASK
-let calendarModalMode = "CREATE";   // CREATE or EDIT_MEETING
+let currentCalendarFilter = "ALL";
+let calendarModalType = "MEETING";
+let calendarModalMode = "CREATE";
 let currentMeetingData = null;
 let currentTaskData = null;
 
-// ==========================================
-// 1. QUẢN LÝ AUTHENTICATION & API CALL
-// ==========================================
 
 function getToken() {
     return localStorage.getItem("pms_token");
@@ -109,10 +102,6 @@ async function apiCall(endpoint, method = "GET", body = null) {
 }
 
 
-// ==========================================
-// 2. KHỞI CHẠY ỨNG DỤNG & AUTH FLOW
-// ==========================================
-
 document.addEventListener("DOMContentLoaded", () => {
     checkAuthState();
 });
@@ -123,17 +112,14 @@ async function checkAuthState() {
     const authScreen = document.getElementById("auth-screen");
 
     if (token && user) {
-        // Kiểm tra xem token này có thực sự hợp lệ với backend và database hiện tại không
         const profile = await fetchUserProfile(token);
         if (!profile) {
-            // Token đã hết hạn hoặc database mới chưa có user này -> xóa auth cũ trong im lặng
             clearAuth();
             authScreen.classList.remove("hidden");
             return;
         }
 
         authScreen.classList.add("hidden");
-        // Lưu thông tin người dùng đầy đủ bao gồm ID vào localStorage
         setAuth(token, profile);
 
         const displayName = profile.username || user.username || "User";
@@ -144,7 +130,6 @@ async function checkAuthState() {
         document.getElementById("user-display-email").textContent = profile.email || user.email || "";
         document.getElementById("user-avatar-initial").textContent = displayName.substring(0, 2).toUpperCase();
 
-        // Hiển thị thông tin vào Dropdown mở rộng (chứa User ID chuỗi ngẫu nhiên)
         const dropdownIdEl = document.getElementById("dropdown-user-id");
         if (dropdownIdEl) dropdownIdEl.textContent = myUserId;
         const dropdownNameEl = document.getElementById("dropdown-user-name");
@@ -175,7 +160,6 @@ function toggleProfileDropdown(e) {
     }
 }
 
-// Tự động đóng Profile Dropdown khi click ra ngoài
 document.addEventListener("click", function(event) {
     const dropdown = document.getElementById("user-profile-dropdown");
     const btn = document.getElementById("user-profile-btn");
@@ -255,10 +239,6 @@ function handleLogout() {
 }
 
 
-// ==========================================
-// 3. ĐIỀU HƯỚNG SIDEBAR VIEWS
-// ==========================================
-
 function switchSidebarView(view) {
     activeSidebarView = view;
     const views = ["home", "projects", "calendar", "mytasks", "team", "activities"];
@@ -308,10 +288,6 @@ function openProjectView(wsId) {
 }
 
 
-// ==========================================
-// 4. QUẢN LÝ DỮ LIỆU WORKSPACE & DASHBOARD
-// ==========================================
-
 async function loadAllData() {
     await loadWorkspaces();
     loadMyTasksCount();
@@ -321,7 +297,6 @@ async function loadWorkspaces() {
     const workspaces = await apiCall("/workspaces", "GET");
     allWorkspaces = workspaces || [];
 
-    // KPI Total Projects
     document.getElementById("kpi-total-projects").textContent = allWorkspaces.length;
 
     if (allWorkspaces.length === 0) {
@@ -466,7 +441,6 @@ async function loadWorkspaceDetails() {
                 : "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700";
         }
 
-        // Ẩn/Hiện nút Add Task & Lên lịch cho Member
         const boardAddBtn = document.getElementById("board-add-task-btn");
         if (boardAddBtn) {
             if (isOwner) boardAddBtn.classList.remove("hidden");
@@ -484,29 +458,24 @@ async function loadWorkspaceDetails() {
         }
     }
 
-    // 1. Tải Summary Stats
     const summary = await apiCall(`/workspaces/${currentWorkspaceId}/summary`, "GET");
     if (summary) {
         document.getElementById("kpi-total-tasks").textContent = summary.total_tasks || 0;
         document.getElementById("kpi-overdue-tasks").textContent = summary.todo_count || 0;
 
-        // Cập nhật Donut Chart Widget
         updateDonutChart(summary);
     }
 
-    // 2. Tải Team Members Count
     const members = await apiCall(`/workspaces/${currentWorkspaceId}/members`, "GET");
     if (members) {
         document.getElementById("kpi-team-members").textContent = members.length || 0;
     }
 
-    // 3. Tải Tasks của Project
     const tasks = await apiCall(`/workspaces/${currentWorkspaceId}/tasks`, "GET");
     currentWorkspaceTasks = tasks || [];
     renderKanbanColumns(currentWorkspaceTasks);
     renderUpcomingDeadlinesWidget(currentWorkspaceTasks);
 
-    // 4. Tải Recent Activities
     loadRecentActivitiesWidget();
 }
 
@@ -526,7 +495,6 @@ function updateDonutChart(summary) {
     document.getElementById("legend-inprogress-stat").textContent = `${inProgress} (${inProgressPct}%)`;
     document.getElementById("legend-todo-stat").textContent = `${todo} (${todoPct}%)`;
 
-    // SVG dasharray: chu vi là ~97.4 (2 * PI * 15.5)
     const circleDone = document.getElementById("progress-circle-done");
     const circleInProg = document.getElementById("progress-circle-inprogress");
 
@@ -537,10 +505,6 @@ function updateDonutChart(summary) {
     }
 }
 
-
-// ==========================================
-// 5. KANBAN TASK BOARD (KHỚP HOÀN TOÀN MOCKUP)
-// ==========================================
 
 function renderKanbanColumns(tasks) {
     const colTodo = document.getElementById("col-todo-tasks");
@@ -574,7 +538,6 @@ function createTaskCardElement(task) {
     card.className = "task-card bg-white p-3.5 rounded-2xl border border-slate-200/70 shadow-sm space-y-2.5 cursor-pointer";
     card.onclick = () => openTaskDetail(task.id);
 
-    // Priority badge
     let priorityClass = "badge-low";
     let priorityDot = "bg-emerald-500";
     if (task.priority === "HIGH") {
@@ -588,19 +551,16 @@ function createTaskCardElement(task) {
         priorityDot = "bg-blue-500";
     }
 
-    // Date
     let dateStr = "No date";
     if (task.due_date) {
         const d = parseUTCDate(task.due_date) || new Date(task.due_date);
         dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
-    // Assignee
     const assigneeInitial = (task.assignee && task.assignee.username)
         ? task.assignee.username.substring(0, 1).toUpperCase()
         : "?";
 
-    // Phân quyền đổi trạng thái nhanh: CHỈ OWNER
     const currentWs = allWorkspaces.find(w => String(w.id) === String(task.workspace_id || currentWorkspaceId));
     const currentUser = getCurrentUser();
     const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
@@ -650,11 +610,6 @@ function handleGlobalSearch(keyword) {
 }
 
 
-// ==========================================
-// 6. RIGHT SIDEBAR WIDGETS
-// ==========================================
-
-// Helper chuẩn hóa ngày giờ UTC từ SQLite / Backend sang Date Object địa phương
 function parseUTCDate(dateStr) {
     if (!dateStr) return null;
     let s = String(dateStr).trim();
@@ -673,7 +628,6 @@ async function loadRecentActivitiesWidget() {
     const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
     const currentUser = getCurrentUser();
 
-    // KIỂM TRA QUYỀN OWNER: Chỉ chủ sở hữu dự án mới thấy
     const isOwner = currentWs && currentUser && (String(currentWs.owner_id) === String(currentUser.id));
     if (!isOwner) {
         container.innerHTML = `<p class="text-xs text-slate-400 py-3 text-center italic"><i class="fa-solid fa-lock text-[10px] mr-1"></i> Chỉ chủ sở hữu dự án mới có quyền xem hoạt động.</p>`;
@@ -686,7 +640,6 @@ async function loadRecentActivitiesWidget() {
         return;
     }
 
-    // Top 5 items
     activities.slice(0, 5).forEach(act => {
         const item = document.createElement("div");
         item.className = "flex items-start gap-3";
@@ -760,10 +713,6 @@ function formatRelativeTime(dateStr) {
 }
 
 
-// ==========================================
-// 7. TASK DETAIL MODAL (COMMENTS & AUDIT LOG)
-// ==========================================
-
 async function openTaskDetail(taskId) {
     currentTaskId = taskId;
     const task = await apiCall(`/tasks/${taskId}`, "GET");
@@ -774,7 +723,6 @@ async function openTaskDetail(taskId) {
     document.getElementById("modal-task-title").textContent = task.title;
     document.getElementById("modal-task-desc").textContent = task.description || "Không có mô tả chi tiết.";
     
-    // Đồng bộ select trạng thái và pills
     const statusSelect = document.getElementById("modal-task-status-select");
     if (statusSelect) {
         statusSelect.value = task.status;
@@ -794,16 +742,13 @@ async function openTaskDetail(taskId) {
         document.getElementById("modal-task-due").textContent = "Chưa đặt";
     }
 
-    // Đổ danh sách người làm và chọn người hiện tại
     await populateTaskAssigneeSelect("detail-task-assignee-select", task.assignee_id);
 
-    // Phân quyền trong Modal chi tiết:
     const currentWs = allWorkspaces.find(w => String(w.id) === String(task.workspace_id || currentWorkspaceId));
     const currentUser = getCurrentUser();
     const isOwner = currentWs && currentUser && (String(currentWs.owner_id).replace('#', '') === String(currentUser.id).replace('#', ''));
     const canChangeStatus = isOwner;
 
-    // Nút xóa task & nút chuyển cuộc họp: chỉ Owner mới thấy
     const delBtn = document.getElementById("modal-delete-task-btn");
     if (delBtn) {
         if (isOwner) delBtn.classList.remove("hidden");
@@ -815,7 +760,6 @@ async function openTaskDetail(taskId) {
         else convertBtn.classList.add("hidden");
     }
 
-    // Assignee dropdown: Chỉ Owner mới được phân công lại
     const assigneeSelect = document.getElementById("detail-task-assignee-select");
     if (assigneeSelect) {
         assigneeSelect.disabled = !isOwner;
@@ -828,7 +772,6 @@ async function openTaskDetail(taskId) {
         }
     }
 
-    // Status select và status pills: Chỉ Owner mới được chuyển
     if (statusSelect) {
         statusSelect.disabled = !canChangeStatus;
         if (!canChangeStatus) {
@@ -990,7 +933,6 @@ function updateModalStatusPills(currentStatus) {
     });
 }
 
-// Xử lý đổi trạng thái task từ bên trong Modal chi tiết
 async function handleModalTaskStatusChange(newStatus) {
     if (!currentTaskId) return;
     const currentWs = allWorkspaces.find(w => String(w.id) === String(currentTaskData ? currentTaskData.workspace_id : currentWorkspaceId));
@@ -1008,7 +950,6 @@ async function handleModalTaskStatusChange(newStatus) {
             updateModalStatusPills(newStatus);
             showToast(`Đã chuyển trạng thái sang ${newStatus}`);
 
-            // Cập nhật lại board, widget, timeline và lịch
             if (currentWorkspaceId) {
                 loadWorkspaceDetails();
                 loadRecentActivitiesWidget();
@@ -1028,7 +969,6 @@ async function handleModalTaskStatusChange(newStatus) {
     }
 }
 
-// Xử lý đổi trạng thái nhanh từ Kanban Board hoặc My Tasks
 async function handleQuickTaskStatusChange(taskId, newStatus, event) {
     if (event) {
         event.stopPropagation();
@@ -1061,7 +1001,6 @@ async function handleQuickTaskStatusChange(taskId, newStatus, event) {
             if (myTasksTab && !myTasksTab.classList.contains("hidden")) {
                 loadMyTasks();
             }
-            // Nếu modal chi tiết của task này đang mở
             if (currentTaskId == taskId) {
                 const statusSelect = document.getElementById("modal-task-status-select");
                 if (statusSelect) statusSelect.value = newStatus;
@@ -1190,10 +1129,6 @@ async function loadTaskActivities(taskId) {
 }
 
 
-// ==========================================
-// 8. TẠO TASK, WORKSPACE, CUỘC HỌP
-// ==========================================
-
 async function handleCreateTask(e) {
     e.preventDefault();
     if (!currentWorkspaceId) return;
@@ -1272,7 +1207,6 @@ async function handleJoinWorkspace(e) {
     }
 }
 
-// Sửa Workspace
 function openEditWorkspaceModal() {
     if (!currentWorkspaceId) return;
     const ws = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
@@ -1297,7 +1231,6 @@ async function handleUpdateWorkspace(e) {
     }
 }
 
-// Xóa Workspace
 async function handleDeleteWorkspace() {
     if (!currentWorkspaceId) return;
     const ws = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
@@ -1314,7 +1247,6 @@ async function handleDeleteWorkspace() {
     }
 }
 
-// Đổi mật khẩu
 async function handleChangePassword(e) {
     e.preventDefault();
     const oldPassword = document.getElementById("cp-old-password").value;
@@ -1348,11 +1280,6 @@ async function handleChangePassword(e) {
 }
 
 
-// ==========================================
-// 9. LỊCH FULLCALENDAR & MY TASKS
-// ==========================================
-
-// Helper hiển thị thông báo nổi Toast (Google Calendar style)
 function showToast(message, type = "success") {
     const container = document.getElementById("toast-container");
     if (!container) return;
@@ -1379,14 +1306,12 @@ function showToast(message, type = "success") {
     }, 4000);
 }
 
-// Helper định dạng ngày giờ cho input datetime-local (YYYY-MM-DDTHH:mm) theo giờ địa phương
 function formatDateTimeLocal(d) {
     if (!d) return "";
     const pad = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Helper an toàn parse chuỗi ngày giờ từ API đảm bảo đồng bộ chuẩn xác múi giờ địa phương
 function parseApiDateTime(str) {
     if (!str) return null;
     let s = String(str).trim();
@@ -1415,14 +1340,13 @@ function initOrRefreshCalendar() {
                 day: 'Ngày',
                 list: 'Lịch biểu'
             },
-            // Tính năng Google Calendar:
-            navLinks: true,         // Click ngày để phóng to sang chế độ Ngày/Tuần
-            selectable: true,       // Bật tính năng click/kéo chọn khung giờ trực tiếp
-            selectMirror: true,     // Hiển thị khung tạm thời khi kéo thả chọn giờ
+            navLinks: true,
+            selectable: true,
+            selectMirror: true,
             unselectAuto: true,
-            editable: true,         // Kéo thả (drag & drop) dời lịch & co giãn thời lượng
+            editable: true,
             eventResizableFromStart: false,
-            nowIndicator: true,     // Bật mốc thời gian hiện tại
+            nowIndicator: true,
             nowIndicatorDidMount: function(arg) {
                 arg.el.style.pointerEvents = 'auto';
                 arg.el.style.cursor = 'pointer';
@@ -1452,18 +1376,17 @@ function initOrRefreshCalendar() {
                     showToast("⏰ Đang lên lịch tại mốc thời gian hiện tại!", "info");
                 };
             },
-            scrollTime: '08:00:00', // Cuộn mặc định tới 8h sáng
+            scrollTime: '08:00:00',
             slotMinTime: '06:00:00',
             slotMaxTime: '23:00:00',
             slotDuration: '00:30:00',
             dayMaxEvents: 4,
-            eventDisplay: 'block', // Luôn hiển thị dạng thẻ khối đặc (solid block) cho mọi sự kiện
-            eventMinHeight: 44,    // Chiều cao tối thiểu đảm bảo sự kiện luôn rõ chữ và icon
+            eventDisplay: 'block',
+            eventMinHeight: 44,
             slotEventOverlap: false,
             allDaySlot: true,
             allDayText: 'Cả ngày',
             datesSet: function(info) {
-                // Tự động cập nhật kích thước khi chuyển qua lại giữa Tháng / Tuần / Ngày
                 if (calendarInstance) {
                     setTimeout(() => {
                         calendarInstance.updateSize();
@@ -1471,12 +1394,10 @@ function initOrRefreshCalendar() {
                 }
             },
 
-            // SỰ KIỆN 1: Click hoặc kéo chọn ô giờ trên lịch tuần/tháng (Google Calendar Quick Create)
             select: function(selectionInfo) {
                 openCreateCalendarEventModal(selectionInfo);
             },
 
-            // SỰ KIỆN 2: Lấy dữ liệu sự kiện từ Backend (có hỗ trợ bộ lọc)
             events: async function(info, successCallback, failureCallback) {
                 if (!currentWorkspaceId) {
                     successCallback([]);
@@ -1506,7 +1427,6 @@ function initOrRefreshCalendar() {
                             else if (e.task_priority === 'LOW') { bg = '#0284c7'; border = '#0369a1'; }
                         }
 
-                        // Parse ngày giờ an toàn tuyệt đối theo chuẩn UTC đồng bộ giờ địa phương
                         const startDate = parseApiDateTime(e.start_time);
                         let endDate = e.end_time ? parseApiDateTime(e.end_time) : null;
 
@@ -1515,7 +1435,6 @@ function initOrRefreshCalendar() {
                                 endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
                             }
                         } else {
-                            // Với Hạn chót Task: đảm bảo hiển thị khối 45 phút tối thiểu để không bị thành đường chỉ mỏng
                             if (!endDate || endDate <= startDate) {
                                 endDate = new Date(startDate.getTime() + 45 * 60 * 1000);
                             }
@@ -1531,7 +1450,7 @@ function initOrRefreshCalendar() {
                             textColor: '#ffffff',
                             allDay: false,
                             editable: isOwner,
-                            durationEditable: isOwner && isMeeting, // Chỉ Owner và chỉ Cuộc họp mới kéo dãn thời lượng
+                            durationEditable: isOwner && isMeeting,
                             extendedProps: {
                                 ...e,
                                 clean_start: startDate,
@@ -1545,7 +1464,6 @@ function initOrRefreshCalendar() {
                 }
             },
 
-            // Render giao diện thẻ sự kiện đẹp mắt, phân biệt rõ giữa Lịch Tháng và Lịch Tuần/Ngày
             eventContent: function(arg) {
                 const props = arg.event.extendedProps;
                 const isMeeting = (props.event_type === 'MEETING');
@@ -1566,7 +1484,6 @@ function initOrRefreshCalendar() {
                 const el = document.createElement('div');
 
                 if (isTimeGrid) {
-                    // CHẾ ĐỘ XEM TUẦN & NGÀY: Hiển thị dạng khối dọc đầy đủ thông tin, màu sắc rõ nét, phủ kín 100% chiều cao
                     el.className = 'w-full h-full min-h-full rounded-lg p-2 text-white flex flex-col justify-between shadow-xs overflow-hidden select-none cursor-pointer';
                     el.style.backgroundColor = bg;
                     el.style.border = `1px solid ${border}`;
@@ -1597,7 +1514,6 @@ function initOrRefreshCalendar() {
                         </div>
                     `;
                 } else {
-                    // CHẾ ĐỘ XEM THÁNG: Hiển thị thanh ngang 1 dòng gọn gàng, trang nhã
                     el.className = 'fc-event-badge flex items-center gap-1.5 px-2 py-1 rounded-md text-white text-xs leading-tight w-full max-w-full min-w-0 overflow-hidden font-bold shadow-xs cursor-pointer';
                     el.style.backgroundColor = bg;
                     el.style.border = `1px solid ${border}`;
@@ -1612,7 +1528,6 @@ function initOrRefreshCalendar() {
                     `;
                 }
 
-                // GẮN LISTENER CLICK TRỰC TIẾP LÊN THẺ ĐỂ ĐẢM BẢO 100% ĂN NGAY KHI CLICK
                 el.addEventListener('click', function(ev) {
                     ev.stopPropagation();
                     if (props.event_type === 'MEETING') {
@@ -1626,17 +1541,14 @@ function initOrRefreshCalendar() {
                 return { domNodes: [el] };
             },
 
-            // SỰ KIỆN 3: Kéo thả di chuyển sự kiện sang ngày/giờ khác (Drag & Drop)
             eventDrop: async function(info) {
                 await handleEventDrop(info);
             },
 
-            // SỰ KIỆN 4: Kéo mép dưới để tăng/giảm thời lượng cuộc họp (Resize)
             eventResize: async function(info) {
                 await handleEventResize(info);
             },
 
-            // SỰ KIỆN 5: Click vào sự kiện để xem chi tiết
             eventClick: function(info) {
                 const props = info.event.extendedProps;
                 if (props.event_type === 'MEETING') {
@@ -1659,7 +1571,6 @@ function initOrRefreshCalendar() {
     }
 }
 
-// Xử lý kéo thả sự kiện sang giờ/ngày mới
 async function handleEventDrop(info) {
     const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
     const currentUser = getCurrentUser();
@@ -1707,7 +1618,6 @@ async function handleEventDrop(info) {
     }
 }
 
-// Xử lý kéo dãn thời lượng cuộc họp
 async function handleEventResize(info) {
     const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
     const currentUser = getCurrentUser();
@@ -1745,7 +1655,6 @@ async function handleEventResize(info) {
     }
 }
 
-// Chuyển đổi bộ lọc sự kiện trên lịch
 function setCalendarFilter(filter) {
     currentCalendarFilter = filter;
     const btns = {
@@ -1769,7 +1678,6 @@ function setCalendarFilter(filter) {
     }
 }
 
-// Mở Modal tạo lịch (Google Calendar Style) với khung giờ được click / kéo chọn
 async function openCreateCalendarEventModal(selectionInfo = null) {
     const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
     const currentUser = getCurrentUser();
@@ -1790,13 +1698,11 @@ async function openCreateCalendarEventModal(selectionInfo = null) {
 
     populateCalendarWorkspaceSelect(currentWorkspaceId);
 
-    // Reset các trường
     document.getElementById("meet-title").value = "";
     document.getElementById("meet-desc").value = "";
     document.getElementById("meet-link").value = "";
     document.getElementById("cal-task-desc").value = "";
 
-    // Load danh sách người thực hiện cho Task
     populateCalendarAssigneeSelect();
 
     if (selectionInfo) {
@@ -1804,7 +1710,6 @@ async function openCreateCalendarEventModal(selectionInfo = null) {
         let end = selectionInfo.end ? new Date(selectionInfo.end) : null;
 
         if (selectionInfo.allDay) {
-            // Xem theo Tháng (click hoặc kéo ngày)
             start.setHours(9, 0, 0, 0);
             if (!end || end.getTime() <= start.getTime()) {
                 end = new Date(start.getTime() + 60 * 60 * 1000);
@@ -1818,7 +1723,6 @@ async function openCreateCalendarEventModal(selectionInfo = null) {
                 }
             }
         } else {
-            // Xem theo Tuần hoặc Ngày (click hoặc kéo ô giờ chính xác)
             if (!end || end.getTime() === start.getTime()) {
                 end = new Date(start.getTime() + 60 * 60 * 1000);
             }
@@ -1827,7 +1731,6 @@ async function openCreateCalendarEventModal(selectionInfo = null) {
         document.getElementById("meet-start").value = formatDateTimeLocal(start);
         document.getElementById("meet-end").value = formatDateTimeLocal(end);
     } else {
-        // Mặc định tới giờ tròn kế tiếp
         const now = new Date();
         now.setMinutes(0, 0, 0);
         now.setHours(now.getHours() + 1);
@@ -1846,7 +1749,6 @@ async function openCreateCalendarEventModal(selectionInfo = null) {
     }, 150);
 }
 
-// Chuyển tab giữa Cuộc họp vs Công việc trong Modal
 function switchCalendarModalTab(type) {
     calendarModalType = type;
     const tabMeeting = document.getElementById("tab-cal-meeting");
@@ -1875,7 +1777,6 @@ function switchCalendarModalTab(type) {
     }
 }
 
-// Đặt thời lượng nhanh (+15p, +30p, +1h...)
 function setQuickDuration(minutes) {
     const startInput = document.getElementById("meet-start");
     const endInput = document.getElementById("meet-end");
@@ -1940,7 +1841,6 @@ async function populateCalendarAssigneeSelect() {
     }
 }
 
-// Xử lý nộp Form Tạo/Sửa Lịch
 async function handleCalendarEventSubmit(e) {
     e.preventDefault();
     const wsId = document.getElementById("cal-modal-workspace").value || currentWorkspaceId;
@@ -1963,7 +1863,6 @@ async function handleCalendarEventSubmit(e) {
         return;
     }
 
-    // CHẾ ĐỘ SỬA CUỘC HỌP
     if (calendarModalMode === 'EDIT_MEETING') {
         const payload = {
             title,
@@ -1982,7 +1881,6 @@ async function handleCalendarEventSubmit(e) {
         return;
     }
 
-    // CHẾ ĐỘ TẠO MỚI
     if (calendarModalType === 'MEETING') {
         const linkVal = document.getElementById("meet-link").value.trim();
         const payload = {
@@ -2000,7 +1898,6 @@ async function handleCalendarEventSubmit(e) {
             loadRecentActivitiesWidget();
         }
     } else {
-        // TẠO TASK KÈM HẠN CHÓT TRÊN LỊCH
         const priority = document.getElementById("cal-task-priority").value;
         const statusVal = document.getElementById("cal-task-status").value;
         const assigneeEl = document.getElementById("cal-task-assignee");
@@ -2029,7 +1926,6 @@ async function handleCalendarEventSubmit(e) {
     }
 }
 
-// Mở Modal xem chi tiết cuộc họp
 function openMeetingDetail(event) {
     const rawId = event.id.replace('meeting-', '');
     currentMeetingId = rawId;
@@ -2058,7 +1954,6 @@ function openMeetingDetail(event) {
     openModal("meeting-detail-modal");
 }
 
-// Mở Modal chỉnh sửa cuộc họp từ Modal chi tiết
 function openEditMeetingModal() {
     if (!currentMeetingData) return;
     closeModal("meeting-detail-modal");
@@ -2167,9 +2062,6 @@ async function loadMyTasksCount() {
     }
 }
 
-// ==========================================
-// QUẢN LÝ THÀNH VIÊN VÀ USER ID
-// ==========================================
 
 function copyMyUserId(e) {
     if (e) e.stopPropagation();
@@ -2283,7 +2175,6 @@ async function loadFullActivities() {
     const currentWs = allWorkspaces.find(w => String(w.id) === String(currentWorkspaceId));
     const currentUser = getCurrentUser();
 
-    // KIỂM TRA QUYỀN OWNER: Chỉ chủ sở hữu dự án mới thấy
     const isOwner = currentWs && currentUser && (String(currentWs.owner_id) === String(currentUser.id));
     if (!isOwner) {
         container.innerHTML = `
@@ -2323,10 +2214,6 @@ async function loadFullActivities() {
     });
 }
 
-
-// ==========================================
-// 10. MODAL UTILITIES
-// ==========================================
 
 function openModal(id) {
     if (id === "create-task-modal") {

@@ -7,14 +7,14 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ProjectManage - Workspace & Task Management Dashboard</title>
-    <!-- Tailwind CSS CDN -->
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome 6 CDN -->
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- FullCalendar 6 CDN -->
+    
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/locales-all.global.min.js"></script>
-    <!-- Custom CSS -->
+    
     <link rel="stylesheet" href="css/style.css?v=5">
     <script>
         tailwind.config = {
@@ -36,12 +36,9 @@
 </head>
 <body class="bg-slate-50/60 text-slate-800 antialiased h-screen flex overflow-hidden font-sans">
 
-    <!-- ========================================== -->
-    <!-- 1. MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ (AUTH OVERLAY) -->
-    <!-- ========================================== -->
     <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl border border-slate-100 transition-all">
-            <!-- Logo & Title -->
+            
             <div class="text-center mb-6">
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200 mb-3">
                     <i class="fa-solid fa-shapes text-2xl"></i>
@@ -50,13 +47,11 @@
                 <p class="text-sm text-slate-500 mt-1">Đăng nhập để vào bảng làm việc của bạn</p>
             </div>
 
-            <!-- Tabs: Đăng nhập / Đăng ký -->
             <div class="flex border-b border-slate-200 mb-6">
                 <button id="tab-login-btn" onclick="showAuthTab('login')" class="flex-1 pb-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600">Đăng nhập</button>
                 <button id="tab-register-btn" onclick="showAuthTab('register')" class="flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-600">Đăng ký</button>
             </div>
 
-            <!-- Form Đăng nhập -->
             <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
@@ -75,7 +70,6 @@
                 <button type="submit" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-200 transition">Đăng nhập ngay</button>
             </form>
 
-            <!-- Form Đăng ký -->
             <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Họ và Tên</label>
@@ -103,13 +97,9 @@
         </div>
     </div>
 
-
-    <!-- ========================================== -->
-    <!-- 2. LEFT SIDEBAR (THANH ĐIỀU HƯỚNG BÊN TRÁI) -->
-    <!-- ========================================== -->
     <aside class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 z-20">
         <div class="p-6">
-            <!-- Brand Logo -->
+            
             <div class="flex items-center gap-3 mb-8">
                 <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-100">
                     <i class="fa-solid fa-shapes text-sm"></i>
@@ -117,7 +107,6 @@
                 <h1 class="text-lg font-extrabold text-slate-900 tracking-tight">ProjectManage</h1>
             </div>
 
-            <!-- Navigation Links -->
             <nav class="space-y-1.5">
                 <button onclick="switchSidebarView('home')" id="nav-home" class="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-blue-50 text-blue-600 transition">
                     <i class="fa-solid fa-house w-4 text-center"></i>
@@ -148,7 +137,6 @@
                 </button>
             </nav>
 
-            <!-- Nút Tạo & Tham gia Project -->
             <div class="mt-8 space-y-2">
                 <button onclick="openModal('create-workspace-modal')" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold text-blue-600 bg-blue-50/80 hover:bg-blue-100/70 border border-blue-200/60 transition">
                     <i class="fa-solid fa-plus text-xs"></i>
@@ -161,7 +149,6 @@
             </div>
         </div>
 
-        <!-- Sidebar Bottom Footer -->
         <div class="p-6 border-t border-slate-100 space-y-2">
             <a href="/docs" target="_blank" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition">
                 <i class="fa-solid fa-book w-4 text-slate-400"></i>
@@ -178,26 +165,19 @@
         </div>
     </aside>
 
-
-    <!-- ========================================== -->
-    <!-- 3. MAIN CENTER & RIGHT LAYOUT -->
-    <!-- ========================================== -->
     <div class="flex-1 flex flex-col overflow-hidden">
 
-        <!-- TOP HEADER BAR (THANH PROFILE) -->
         <header class="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0 z-10">
-            <!-- Left Header -->
+            
             <div class="flex items-center gap-3"></div>
 
-            <!-- Right Profile Section -->
             <div class="flex items-center gap-5">
-                <!-- Notification Bell -->
+                
                 <div class="relative cursor-pointer text-slate-500 hover:text-slate-800 transition">
                     <i class="fa-regular fa-bell text-lg"></i>
                     <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></span>
                 </div>
 
-                <!-- User Profile Dropdown Pill -->
                 <div class="relative">
                     <div id="user-profile-btn" onclick="toggleProfileDropdown(event)" class="flex items-center gap-3 cursor-pointer pl-3 border-l border-slate-200 select-none py-1 px-2 rounded-2xl hover:bg-slate-50 transition" title="Mở menu hồ sơ người dùng">
                         <div class="w-8 h-8 rounded-full bg-slate-700 text-white font-bold flex items-center justify-center text-xs tracking-wider shrink-0">
@@ -210,9 +190,8 @@
                         <i id="profile-chevron" class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200"></i>
                     </div>
 
-                    <!-- Dropdown Menu mở rộng chứa User ID -->
                     <div id="user-profile-dropdown" class="hidden absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 space-y-3.5 transition-all">
-                        <!-- Thông tin tóm tắt -->
+                        
                         <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
                             <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-blue-200 shrink-0">
                                 <span id="dropdown-avatar-initial">TA</span>
@@ -223,7 +202,6 @@
                             </div>
                         </div>
 
-                        <!-- Khung hiển thị User ID ngẫu nhiên có nút Copy -->
                         <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/70 flex items-center justify-between gap-2">
                             <div class="min-w-0">
                                 <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">User ID của bạn</span>
@@ -239,17 +217,12 @@
             </div>
         </header>
 
-
-        <!-- MAIN SCROLLABLE CONTENT BODY (3-COLUMN SPLIT) -->
         <div class="flex-1 flex overflow-hidden">
 
-            <!-- CENTER CONTENT AREA (CHÍNH) -->
             <main class="flex-1 overflow-y-auto p-8 space-y-8">
 
-                <!-- VIEW 1: HOME DASHBOARD (TỔNG QUAN) -->
                 <div id="view-home" class="space-y-8">
 
-                    <!-- GREETING BANNER -->
                     <div>
                         <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                             <span>Hello, <span id="banner-username">Thanh Anh</span>!</span>
@@ -258,9 +231,8 @@
                         <p class="text-sm text-slate-500 mt-1">Here's what's happening with your projects today.</p>
                     </div>
 
-                    <!-- TOP 4 KPI METRIC CARDS -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                        <!-- Total Projects -->
+                        
                         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                             <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0">
                                 <i class="fa-regular fa-folder-open"></i>
@@ -272,7 +244,6 @@
                             </div>
                         </div>
 
-                        <!-- Total Tasks -->
                         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                             <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shrink-0">
                                 <i class="fa-regular fa-circle-check"></i>
@@ -284,7 +255,6 @@
                             </div>
                         </div>
 
-                        <!-- Team Members -->
                         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                             <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg shrink-0">
                                 <i class="fa-solid fa-users"></i>
@@ -296,7 +266,6 @@
                             </div>
                         </div>
 
-                        <!-- Overdue / Pending Tasks -->
                         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                             <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg shrink-0">
                                 <i class="fa-regular fa-clock"></i>
@@ -309,7 +278,6 @@
                         </div>
                     </div>
 
-                    <!-- MY PROJECTS CARDS GRID -->
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
@@ -326,15 +294,13 @@
                             </div>
                         </div>
                         <div id="projects-grid-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                            <!-- Dynamic Project Cards will be rendered here -->
+                            
                         </div>
                     </section>
                 </div>
 
-
-                <!-- VIEW: PROJECTS & TASK BOARD (CHUYÊN BIỆT KHI CHỌN PROJECTS HOẶC CLICK VÀO DỰ ÁN) -->
                 <div id="view-projects" class="hidden space-y-6">
-                    <!-- Project Details & Switcher Banner -->
+                    
                     <div class="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                             <div class="flex items-start gap-3.5">
@@ -357,7 +323,6 @@
                                 </div>
                             </div>
 
-                            <!-- Dropdown chọn project & Actions -->
                             <div class="flex items-center gap-2.5 flex-wrap">
                                 <div class="relative">
                                     <button onclick="toggleProjectSelectMenu()" class="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition shadow-xs">
@@ -377,7 +342,6 @@
                             </div>
                         </div>
 
-                        <!-- Task Search Bar -->
                         <div class="flex items-center justify-between gap-4">
                             <div class="relative flex-1 max-w-md">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-2.5 text-slate-400 text-xs"></i>
@@ -389,9 +353,8 @@
                         </div>
                     </div>
 
-                    <!-- 4 KANBAN BOARD COLUMNS (To Do, In Progress, Review, Done) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-2">
-                        <!-- Column 1: To Do -->
+                        
                         <div class="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 flex flex-col min-h-[420px]">
                             <div class="flex items-center justify-between mb-3 px-1">
                                 <div class="flex items-center gap-2">
@@ -402,7 +365,6 @@
                             <div id="col-todo-tasks" class="space-y-3 flex-1"></div>
                         </div>
 
-                        <!-- Column 2: In Progress -->
                         <div class="bg-blue-50/40 border border-blue-100/60 rounded-2xl p-3.5 flex flex-col min-h-[420px]">
                             <div class="flex items-center justify-between mb-3 px-1">
                                 <div class="flex items-center gap-2">
@@ -413,7 +375,6 @@
                             <div id="col-inprogress-tasks" class="space-y-3 flex-1"></div>
                         </div>
 
-                        <!-- Column 3: Review -->
                         <div class="bg-purple-50/40 border border-purple-100/60 rounded-2xl p-3.5 flex flex-col min-h-[420px]">
                             <div class="flex items-center justify-between mb-3 px-1">
                                 <div class="flex items-center gap-2">
@@ -424,7 +385,6 @@
                             <div id="col-review-tasks" class="space-y-3 flex-1"></div>
                         </div>
 
-                        <!-- Column 4: Done -->
                         <div class="bg-emerald-50/40 border border-emerald-100/60 rounded-2xl p-3.5 flex flex-col min-h-[420px]">
                             <div class="flex items-center justify-between mb-3 px-1">
                                 <div class="flex items-center gap-2">
@@ -437,10 +397,8 @@
                     </div>
                 </div>
 
-
-                <!-- VIEW 2: CALENDAR & MEETINGS (GOOGLE CALENDAR STYLE) -->
                 <div id="view-calendar" class="hidden bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
-                    <!-- Google Calendar Top Bar -->
+                    
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                         <div>
                             <div class="flex items-center gap-2.5">
@@ -454,7 +412,6 @@
                             </div>
                         </div>
 
-                        <!-- Create Event Button -->
                         <div class="flex items-center gap-2.5">
                             <button id="cal-create-event-btn" onclick="openCreateCalendarEventModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 flex items-center gap-2 transition">
                                 <i class="fa-solid fa-plus text-xs"></i> Tạo lịch mới
@@ -462,7 +419,6 @@
                         </div>
                     </div>
 
-                    <!-- Usage Tips Bar -->
                     <div class="flex items-center justify-between bg-blue-50/70 border border-blue-100/80 rounded-2xl px-4 py-2.5 text-xs text-blue-900">
                         <div class="flex items-center gap-2.5">
                             <i class="fa-regular fa-lightbulb text-blue-600 text-sm"></i>
@@ -471,12 +427,9 @@
                         <span class="text-[11px] font-bold text-blue-600 bg-white px-2.5 py-0.5 rounded-full shadow-xs shrink-0 hidden lg:inline-block">FullCalendar 6 Interactive</span>
                     </div>
 
-                    <!-- Calendar Body -->
                     <div id="calendar-container" class="min-h-[650px] pt-1"></div>
                 </div>
 
-
-                <!-- VIEW 3: MY TASKS (KHI CHỌN MY TASKS Ở SIDEBAR) -->
                 <div id="view-mytasks" class="hidden bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
                     <div class="flex items-center justify-between pb-4 border-b border-slate-100">
                         <h3 class="text-lg font-extrabold text-slate-900">Công việc được giao cho tôi</h3>
@@ -484,8 +437,6 @@
                     <div id="my-tasks-list" class="divide-y divide-slate-100"></div>
                 </div>
 
-
-                <!-- VIEW 4: TEAM MEMBERS (KHI CHỌN TEAM Ở SIDEBAR) -->
                 <div id="view-team" class="hidden space-y-6">
                     <div id="add-member-card" class="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
                         <h3 class="text-base font-extrabold text-slate-900">Mời thành viên mới vào dự án</h3>
@@ -500,8 +451,6 @@
                     </div>
                 </div>
 
-
-                <!-- VIEW 5: ACTIVITIES FULL AUDIT LOG -->
                 <div id="view-activities" class="hidden bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
                     <div class="flex items-center justify-between pb-4 border-b border-slate-100">
                         <h3 class="text-lg font-extrabold text-slate-900">Toàn bộ lịch sử hoạt động (Audit Log)</h3>
@@ -511,27 +460,23 @@
 
             </main>
 
-
-            <!-- RIGHT SIDEBAR (3 WIDGETS THEO ĐÚNG ẢNH MẪU) -->
             <aside class="w-80 border-l border-slate-200 bg-white p-6 space-y-8 shrink-0 overflow-y-auto hidden xl:block">
 
-                <!-- WIDGET 1: RECENT ACTIVITY (LỊCH SỬ THỰC TẾ TỪ BACKEND) -->
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <h4 class="text-sm font-extrabold text-slate-900">Recent Activity</h4>
                         <button onclick="switchSidebarView('activities')" class="text-xs font-bold text-blue-600 hover:underline">View all</button>
                     </div>
                     <div id="recent-activity-list" class="space-y-4 text-xs">
-                        <!-- Dynamic items will be injected here -->
+                        
                     </div>
                 </div>
 
-                <!-- WIDGET 2: PROJECT PROGRESS (VÒNG TRÒN TIẾN ĐỘ) -->
                 <div class="space-y-4 pt-6 border-t border-slate-100">
                     <h4 class="text-sm font-extrabold text-slate-900">Project Progress</h4>
                     
                     <div class="flex items-center gap-6">
-                        <!-- Donut Progress Ring -->
+                        
                         <div class="relative w-28 h-28 flex items-center justify-center shrink-0">
                             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                 <circle cx="18" cy="18" r="15.5" fill="none" class="stroke-slate-100" stroke-width="3"></circle>
@@ -544,7 +489,6 @@
                             </div>
                         </div>
 
-                        <!-- Progress Legend -->
                         <div class="space-y-2 text-xs">
                             <div class="flex items-center justify-between gap-3">
                                 <span class="flex items-center gap-2 text-slate-600 font-medium">
@@ -568,14 +512,13 @@
                     </div>
                 </div>
 
-                <!-- WIDGET 3: UPCOMING DEADLINES (HẠN CHÓT SẮP TỚI) -->
                 <div class="space-y-4 pt-6 border-t border-slate-100">
                     <div class="flex items-center justify-between">
                         <h4 class="text-sm font-extrabold text-slate-900">Upcoming Deadlines</h4>
                         <button onclick="switchSidebarView('calendar')" class="text-xs font-bold text-blue-600 hover:underline">View all</button>
                     </div>
                     <div id="upcoming-deadlines-list" class="space-y-3">
-                        <!-- Dynamic deadlines injected here -->
+                        
                     </div>
                 </div>
 
@@ -583,15 +526,9 @@
         </div>
     </div>
 
-
-    <!-- ========================================== -->
-    <!-- 4. MODALS (TẠO TASK, DETAIL, MEETING, WORKSPACE) -->
-    <!-- ========================================== -->
-
-    <!-- MODAL 1: CHI TIẾT TASK (COMMENTS + TASK ACTIVITY AUDIT LOG) -->
     <div id="task-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden">
-            <!-- Header Modal -->
+            
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
                 <div class="flex items-center gap-2.5">
                     <span id="modal-task-id" class="text-xs font-mono font-bold text-slate-400">#0</span>
@@ -616,7 +553,6 @@
                 </div>
             </div>
 
-            <!-- Body Task Info -->
             <div class="p-6 border-b border-slate-100 space-y-3">
                 <h3 id="modal-task-title" class="text-xl font-bold text-slate-900">Tiêu đề Task</h3>
                 <p id="modal-task-desc" class="text-sm text-slate-600 whitespace-pre-line">Mô tả chi tiết...</p>
@@ -629,14 +565,13 @@
                             <select id="detail-task-assignee-select" onchange="handleReassignTask(this.value)" class="text-xs font-bold text-slate-800 bg-slate-100 rounded-lg px-2 py-1 border border-slate-200 focus:outline-none"></select>
                         </div>
                     </div>
-                    <!-- Nút Chuyển thành Cuộc họp -->
+                    
                     <button id="modal-convert-meeting-btn" type="button" onclick="convertCurrentTaskToMeeting()" class="text-emerald-700 hover:text-emerald-900 text-xs font-bold py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 border border-emerald-200/60 shadow-xs">
                         <i class="fa-solid fa-arrow-right-arrow-left text-[10px]"></i>
                         <span>Chuyển thành Cuộc họp</span>
                     </button>
                 </div>
 
-                <!-- Chuyển trạng thái nhanh -->
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-xs font-bold text-slate-400 mr-1">Chuyển nhanh:</span>
@@ -659,25 +594,22 @@
                 </div>
             </div>
 
-            <!-- Tabs trong Modal: Bình luận & Timeline -->
             <div class="flex border-b border-slate-200 px-6 bg-slate-50/40">
                 <button id="task-tab-comments-btn" onclick="switchTaskDetailTab('comments')" class="py-3 px-4 text-xs font-bold text-blue-600 border-b-2 border-blue-600">Bình luận trao đổi</button>
                 <button id="task-tab-activities-btn" onclick="switchTaskDetailTab('activities')" class="py-3 px-4 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600">Lịch sử sự kiện (Audit Log)</button>
             </div>
 
-            <!-- Content Area của Modal -->
             <div class="flex-1 overflow-y-auto p-6 min-h-[200px]">
-                <!-- Panel Bình luận -->
+                
                 <div id="task-comments-panel" class="space-y-4">
                     <div id="comments-container" class="space-y-3"></div>
                 </div>
-                <!-- Panel Lịch sử sự kiện Task -->
+                
                 <div id="task-activities-panel" class="space-y-3 hidden">
                     <div id="activities-container" class="space-y-3"></div>
                 </div>
             </div>
 
-            <!-- Footer: Gửi Bình Luận Mới -->
             <div id="task-comment-input-box" class="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
                 <input type="text" id="new-comment-content" placeholder="Viết bình luận, phản hồi cho task này..." class="flex-1 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
                 <button onclick="handleSendComment()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm transition">
@@ -687,8 +619,6 @@
         </div>
     </div>
 
-
-    <!-- MODAL 2: TẠO TASK MỚI -->
     <div id="create-task-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl border border-slate-100">
             <div class="flex items-center justify-between mb-4">
@@ -733,11 +663,9 @@
         </div>
     </div>
 
-
-    <!-- MODAL 3: TẠO SỰ KIỆN / CUỘC HỌP (GOOGLE CALENDAR STYLE) -->
     <div id="create-meeting-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-lg p-6 rounded-3xl shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto">
-            <!-- Header -->
+            
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                 <div class="flex items-center gap-2.5">
                     <div id="cal-modal-icon" class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-base font-bold shadow-sm">
@@ -751,7 +679,6 @@
                 <button onclick="closeModal('create-meeting-modal')" class="text-slate-400 hover:text-slate-600 p-1 rounded-xl transition"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
 
-            <!-- Tab Switcher: Cuộc họp vs Công việc -->
             <div id="cal-type-switcher" class="flex p-1 bg-slate-100 rounded-2xl mb-4">
                 <button type="button" id="tab-cal-meeting" onclick="switchCalendarModalTab('MEETING')" class="flex-1 py-2 text-xs font-bold rounded-xl bg-white text-emerald-700 shadow-sm flex items-center justify-center gap-2 transition">
                     <i class="fa-solid fa-video text-xs"></i> 📅 Cuộc họp (Meeting)
@@ -762,19 +689,17 @@
             </div>
 
             <form onsubmit="handleCalendarEventSubmit(event)" class="space-y-4">
-                <!-- Tiêu đề lịch -->
+                
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tiêu đề *</label>
                     <input type="text" id="meet-title" required placeholder="Thêm tiêu đề (VD: Sprint Planning, Review UI...)" class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
                 </div>
 
-                <!-- Dự án / Workspace -->
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Dự án / Workspace *</label>
                     <select id="cal-modal-workspace" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium"></select>
                 </div>
 
-                <!-- Thời gian bắt đầu & kết thúc -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Bắt đầu *</label>
@@ -786,7 +711,6 @@
                     </div>
                 </div>
 
-                <!-- Quick Duration Chips -->
                 <div id="cal-duration-chips" class="flex items-center gap-1.5 flex-wrap pt-0.5">
                     <span class="text-[11px] font-bold text-slate-400 mr-1">Thời lượng:</span>
                     <button type="button" onclick="setQuickDuration(15)" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg text-[11px] font-bold transition">+15p</button>
@@ -796,7 +720,6 @@
                     <button type="button" onclick="setQuickDuration(120)" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-lg text-[11px] font-bold transition">+2 giờ</button>
                 </div>
 
-                <!-- PHẦN THÔNG TIN CHO CUỘC HỌP (MEETING) -->
                 <div id="cal-fields-meeting" class="space-y-3 pt-2 border-t border-slate-100">
                     <div>
                         <div class="flex items-center justify-between mb-1">
@@ -813,7 +736,6 @@
                     </div>
                 </div>
 
-                <!-- PHẦN THÔNG TIN CHO TASK -->
                 <div id="cal-fields-task" class="hidden space-y-3 pt-2 border-t border-slate-100">
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -847,7 +769,6 @@
                     </div>
                 </div>
 
-                <!-- Footer Buttons -->
                 <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeModal('create-meeting-modal')" class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">Hủy</button>
                     <button type="submit" id="cal-submit-btn" class="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-200 transition flex items-center gap-1.5">
@@ -858,8 +779,6 @@
         </div>
     </div>
 
-
-    <!-- MODAL 4: CHI TIẾT CUỘC HỌP -->
     <div id="meeting-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
             <div class="flex items-center justify-between mb-3">
@@ -891,8 +810,6 @@
         </div>
     </div>
 
-
-    <!-- MODAL 5: TẠO WORKSPACE MỚI -->
     <div id="create-workspace-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
             <div class="flex items-center justify-between mb-4">
@@ -916,8 +833,6 @@
         </div>
     </div>
 
-
-    <!-- MODAL 6: THAM GIA WORKSPACE BẰNG ID -->
     <div id="join-workspace-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
             <div class="flex items-center justify-between mb-4">
@@ -937,7 +852,6 @@
         </div>
     </div>
 
-    <!-- MODAL 7: CHỈNH SỬA WORKSPACE -->
     <div id="edit-workspace-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
             <div class="flex items-center justify-between mb-4">
@@ -961,7 +875,6 @@
         </div>
     </div>
 
-    <!-- MODAL 8: ĐỔI MẬT KHẨU -->
     <div id="change-password-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
         <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border border-slate-100">
             <div class="flex items-center justify-between mb-4">
@@ -989,11 +902,8 @@
         </div>
     </div>
 
-
-    <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Main JavaScript Logic -->
     <script src="js/app.js?v=14"></script>
 </body>
 </html>

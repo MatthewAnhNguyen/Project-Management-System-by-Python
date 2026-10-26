@@ -10,7 +10,6 @@ from app.routers.workspaces import log_workspace_activity
 router = APIRouter(tags=["Task Comments & Collaboration"])
 
 
-# Helper: Kiểm tra quyền truy cập vào Task thông qua Workspace
 def check_task_access(task_id: str, user_id: str, db: Session):
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not task:
@@ -35,7 +34,6 @@ def check_task_access(task_id: str, user_id: str, db: Session):
     return task, workspace
 
 
-# Helper: Tự động ghi lại lịch sử hoạt động của Task
 def log_task_activity(db: Session, task_id: str, user_id: Optional[str], action_type: str, description: str):
     activity = models.TaskActivity(
         task_id=task_id,
@@ -49,7 +47,6 @@ def log_task_activity(db: Session, task_id: str, user_id: Optional[str], action_
     return activity
 
 
-# 1. THÊM BÌNH LUẬN VÀO TASK
 @router.post("/tasks/{task_id}/comments", response_model=schemas.CommentResponse, status_code=status.HTTP_201_CREATED)
 def create_comment(
     task_id: str,
@@ -57,10 +54,8 @@ def create_comment(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # 1. Kiểm tra quyền truy cập Task
     task, workspace = check_task_access(task_id, current_user.id, db)
 
-    # 2. Kiểm tra nội dung comment
     content = comment_data.content.strip()
     if not content:
         raise HTTPException(
@@ -68,7 +63,6 @@ def create_comment(
             detail="Nội dung bình luận không được để trống!"
         )
 
-    # 3. Tạo comment mới
     new_comment = models.TaskComment(
         task_id=task_id,
         user_id=current_user.id,
@@ -78,7 +72,6 @@ def create_comment(
     db.commit()
     db.refresh(new_comment)
 
-    # 4. Tự động ghi log lịch sử hoạt động Task & Workspace
     preview = content if len(content) <= 30 else content[:30] + "..."
     log_task_activity(
         db=db,
@@ -98,7 +91,6 @@ def create_comment(
     return new_comment
 
 
-# 2. XEM DANH SÁCH BÌNH LUẬN CỦA TASK
 @router.get("/tasks/{task_id}/comments", response_model=list[schemas.CommentResponse])
 def get_task_comments(
     task_id: str,
@@ -114,7 +106,6 @@ def get_task_comments(
     return comments
 
 
-# 3. XÓA BÌNH LUẬN
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment(
     comment_id: str,
@@ -127,7 +118,6 @@ def delete_comment(
 
     task, workspace = check_task_access(str(comment.task_id), current_user.id, db)
 
-    # Chỉ người viết bình luận hoặc Chủ workspace mới được xóa
     is_author = (str(comment.user_id) == str(current_user.id))
     is_owner = (str(workspace.owner_id) == str(current_user.id))
 
@@ -141,7 +131,6 @@ def delete_comment(
     db.delete(comment)
     db.commit()
 
-    # Ghi log hoạt động
     log_task_activity(
         db=db,
         task_id=task_id,
@@ -152,7 +141,6 @@ def delete_comment(
     return
 
 
-# 4. XEM LỊCH SỬ HOẠT ĐỘNG CỦA TASK (ACTIVITY LOG / AUDIT TRAIL)
 @router.get("/tasks/{task_id}/activities", response_model=list[schemas.TaskActivityResponse])
 def get_task_activities(
     task_id: str,

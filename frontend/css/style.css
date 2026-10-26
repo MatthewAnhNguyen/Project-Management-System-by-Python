@@ -1,4 +1,4 @@
-/* Custom styles for ProjectManage Modern SaaS Dashboard */
+
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
 
 body {
@@ -7,7 +7,6 @@ body {
     color: #0f172a;
 }
 
-/* Custom Scrollbars */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -23,13 +22,11 @@ body {
     background: #94a3b8;
 }
 
-/* Modal Overlay */
 .modal-backdrop {
     background-color: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(6px);
 }
 
-/* Task Board Card Styling */
 .task-card {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -38,7 +35,6 @@ body {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
 }
 
-/* Priority Badges */
 .badge-urgent {
     background-color: #fef2f2;
     color: #ef4444;
@@ -60,7 +56,6 @@ body {
     border: 1px solid #dcfce7;
 }
 
-/* FullCalendar Customizations */
 .fc {
     font-family: inherit;
     --fc-border-color: #e2e8f0;
@@ -109,7 +104,6 @@ body {
     color: #ffffff !important;
 }
 
-/* Event solid blocks & reset transparent FullCalendar default */
 .fc-daygrid-day-frame {
     overflow: hidden !important;
 }
@@ -166,7 +160,6 @@ body {
     cursor: pointer !important;
 }
 
-/* TimeGrid (Week & Day Views) Event Container */
 .fc-timegrid-event {
     border-radius: 8px !important;
     border: none !important;
@@ -190,7 +183,6 @@ body {
     flex-direction: column !important;
 }
 
-/* Restrict resize handle to bottom 6px to avoid covering the clickable body */
 .fc-timegrid-event .fc-event-resizer-end {
     height: 6px !important;
     bottom: 0 !important;
@@ -215,7 +207,6 @@ body {
     box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.25) !important;
 }
 
-/* Day cell number styling */
 .fc-daygrid-day-top {
     padding: 6px 8px !important;
     flex-direction: row !important;
@@ -235,7 +226,6 @@ body {
     transition: all 0.15s ease;
 }
 
-/* Today's cell and circular badge */
 .fc-day-today {
     background-color: #f0f7ff !important;
 }
@@ -247,7 +237,6 @@ body {
     box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35) !important;
 }
 
-/* Days from other months (lighter gray) */
 .fc-day-other .fc-daygrid-day-number {
     color: #94a3b8 !important;
     opacity: 0.55;
@@ -261,7 +250,6 @@ body {
     background-color: #f8fafc;
 }
 
-/* Column Header Weekdays (Thứ 2 - CN) */
 .fc-col-header {
     background-color: #f1f5f9;
     border-bottom: 2px solid #e2e8f0 !important;
@@ -282,14 +270,12 @@ body {
     text-decoration: none !important;
 }
 
-/* Google Calendar Selection Highlight */
 .fc-highlight {
     background: rgba(37, 99, 235, 0.2) !important;
     border: 1px dashed #2563eb !important;
     border-radius: 6px;
 }
 
-/* Modern Interactive Live Time Indicator (Google Calendar / Linear Style) */
 .fc .fc-timegrid-now-indicator-line {
     display: block !important;
     opacity: 1 !important;
@@ -353,7 +339,6 @@ body {
     50% { transform: scale(1.3); opacity: 1; }
 }
 
-/* Arrow in the time axis as modern live dot */
 .fc .fc-timegrid-now-indicator-arrow {
     display: block !important;
     opacity: 1 !important;
@@ -375,7 +360,6 @@ body {
     transform: scale(1.3);
 }
 
-/* Week and Day Grid Slot Styling */
 .fc-timegrid-slot {
     height: 38px !important;
     border-bottom: 1px dotted #e2e8f0 !important;
@@ -386,7 +370,6 @@ body {
     color: #64748b !important;
 }
 
-/* Floating Toast Notifications */
 #toast-container {
     position: fixed;
     bottom: 24px;

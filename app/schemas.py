@@ -2,13 +2,11 @@ from pydantic import BaseModel, field_validator
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-# 1. Schema cho dữ liệu người dùng gửi lên (Request)
 class UserCreate(BaseModel):
     username: str
     email: str
     password: str
 
-# 2. Schema cho dữ liệu trả về (Response) - TUYỆT ĐỐI KHÔNG CÓ password
 class UserResponse(BaseModel):
     id: str
     username: str
@@ -17,7 +15,7 @@ class UserResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     class Config:
-        from_attributes = True # Bắt buộc có để chuyển đổi dữ liệu từ SQLAlchemy sang Pydantic
+        from_attributes = True
 
     @field_validator('created_at', mode='before')
     @classmethod
@@ -36,22 +34,17 @@ class UserSimpleResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Dữ liệu client gửi lên khi Đăng nhập
 class UserLogin(BaseModel):
     email: str
     password: str
 
-# Dữ liệu Token trả về cho client
 class Token(BaseModel):
     access_token: str
     token_type: str
-# --- (MỚI) SCHEMA CHO WORKSPACE ---
-# Dữ liệu client gửi lên khi tạo/sửa
 class WorkspaceCreate(BaseModel):
     name: str
-    description: Optional[str] = None # Không bắt buộc nhập
+    description: Optional[str] = None
 
-# Dữ liệu trả về cho client
 class WorkspaceResponse(BaseModel):
     id: str
     name: str
@@ -64,13 +57,10 @@ class WorkspaceResponse(BaseModel):
 
     class Config:
         from_attributes = True
-# --- (MỚI) SCHEMA CHO THÀNH VIÊN WORKSPACE ---
-# Client có thể gửi lên user_id (chuỗi ID ngẫu nhiên) hoặc username/email
 class WorkspaceMemberCreate(BaseModel):
     user_id: str
 
 
-# Dữ liệu trả về
 class WorkspaceMemberResponse(BaseModel):
     id: int
     workspace_id: str
@@ -82,7 +72,6 @@ class WorkspaceMemberResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# --- (MỚI) SCHEMAS CHO USER MỞ RỘNG ---
 class UserUpdate(BaseModel):
     username:Optional[str]= None
     email: Optional[str]= None
@@ -91,7 +80,6 @@ class UserPasswordChange(BaseModel):
     old_password: str
     new_password: str
 
-# --- (MỚI) SCHEMAS CHO TASK ---
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str]=None
@@ -133,7 +121,6 @@ class TaskResponse(BaseModel):
             return v.replace(tzinfo=timezone.utc)
         return v
 
-# --- (MỚI) SCHEMAS CHO BÌNH LUẬN (COMMENTS) ---
 class CommentCreate(BaseModel):
     content: str
 
@@ -149,7 +136,6 @@ class CommentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# --- (MỚI) SCHEMAS CHO LỊCH SỬ HOẠT ĐỘNG (ACTIVITIES) ---
 class TaskActivityResponse(BaseModel):
     id: int
     task_id: int
@@ -163,7 +149,6 @@ class TaskActivityResponse(BaseModel):
         from_attributes = True
 
 
-# --- (MỚI) SCHEMAS PHỤC VỤ GIAO DIỆN TASK UI / KANBAN / SUMMARY ---
 class KanbanBoardResponse(BaseModel):
     workspace_id: str
     todo: list[TaskResponse] = []
@@ -182,7 +167,6 @@ class WorkspaceSummaryResponse(BaseModel):
     cancelled_count: int
     completion_rate: float
 
-# --- SCHEMAS Phục vụ cho MEETING
 class MeetingCreate(BaseModel):
     title: str
     description: Optional[str] = None

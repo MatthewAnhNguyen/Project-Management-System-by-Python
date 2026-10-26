@@ -4,13 +4,11 @@ from sqlalchemy import or_
 from typing import Optional, Union
 from datetime import datetime, timezone
 
-# Import models, schemas và security từ project
 from app import models, schemas
 from app.database import get_db
 from app.security import get_current_user
 from app.routers.workspaces import log_workspace_activity
 
-# Tạo đối tượng router và gắn thẻ nhóm để hiển thị đẹp trên Swagger UI (/docs)
 router = APIRouter(tags=["Team Meetings & Calendar"])
 
 def normalize_dt(dt: Optional[datetime]) -> Optional[datetime]:
@@ -39,7 +37,6 @@ def parse_flexible_datetime(val: Optional[Union[str, datetime]]) -> Optional[dat
         val = val.strip()
         if not val:
             return None
-        # Xử lý trường hợp URL query string decode dấu '+' trong múi giờ thành khoảng trắng ' '
         val_clean = val.replace(" ", "+")
         try:
             dt = datetime.fromisoformat(val_clean)
@@ -52,23 +49,18 @@ def parse_flexible_datetime(val: Optional[Union[str, datetime]]) -> Optional[dat
                 return None
     return None
 
-# Helper đảm bảo user đang gọi API thực sự thuộc workspace đó
 def check_workspace_membership(workspace_id: str, user_id: str, db: Session):
-    #1. Tìm workspace theo ID
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace không tồn tại!")
 
-    #2. Kiểm tra xem user có phải là Chủ sở hữu không
     is_owner = (str(workspace.owner_id) == str(user_id))
 
-    #3. Kiểm tra xem user có nằm trong danh sách thành viên không
     is_member = db.query(models.WorkspaceMember).filter(
         models.WorkspaceMember.workspace_id == workspace_id,
         models.WorkspaceMember.user_id == user_id
     ).first()
 
-    #4. Nếu không phải cả hai -> Báo lỗi 403 Forbidden
     if not is_owner and not is_member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -76,7 +68,6 @@ def check_workspace_membership(workspace_id: str, user_id: str, db: Session):
         )
     return workspace
 
-# Helper kiểm tra quyền Owner riêng
 def check_workspace_owner(workspace_id: str, user_id: str, db: Session):
     clean_ws_id = str(workspace_id).replace('#', '').strip()
     clean_uid = str(user_id).replace('#', '').strip()
@@ -89,7 +80,6 @@ def check_workspace_owner(workspace_id: str, user_id: str, db: Session):
             detail="Workspace không tồn tại!"
         )
 
-    # Kiểm tra quyền Chủ sở hữu
     if str(workspace.owner_id).replace('#', '').strip() != clean_uid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -104,27 +94,21 @@ def create_meeting(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Bước 1: KIỂM TRA QUYỀN - Chỉ Owner mới được lên lịch họp
     workspace = check_workspace_owner(workspace_id, current_user.id, db)
 
-    # Chuẩn hoá datetime
     start_dt = normalize_dt(meeting_data.start_time)
     end_dt = normalize_dt(meeting_data.end_time)
 
-    # Bước 2: KIỂM TRA THỜI GIAN HỢP LỆ
     if start_dt and end_dt and start_dt >= end_dt:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Thời gian kết thúc cuộc họp phải sau thời gian bắt đầu!"
         )
 
-    # Bước 3: XỬ LÝ LINK HỌP (Tự sinh link nếu chủ nhóm để trống)
     link = meeting_data.meeting_link
     if not link or not link.strip():
-        # Tạo link Jitsi Meet ngẫu nhiên miễn phí không cần cấu hình API Google
         link = f"https://meet.jit.si/pms-ws{workspace_id}-meeting-{int(start_dt.timestamp() if start_dt else 0)}"
 
-    # BƯỚC 4: TẠO BẢN GHI VÀ LƯU VÀO DATABASE
     new_meeting = models.Meeting(
         title=meeting_data.title.strip(),
         description=meeting_data.description,
@@ -140,7 +124,6 @@ def create_meeting(
     db.commit()
     db.refresh(new_meeting)
 
-    # Ghi log hoạt động Workspace
     log_workspace_activity(
         workspace_id=workspace_id,
         user_id=current_user.id,
@@ -209,7 +192,6 @@ def update_meeting(
             detail="Chỉ Chủ sở hữu (Owner) của Workspace mới có quyền sửa cuộc họp!"
         )
 
-    # Chuẩn hoá datetime để so sánh tránh lỗi TypeError naive vs aware
     new_start = normalize_dt(update_data.start_time) if update_data.start_time is not None else normalize_dt(meeting.start_time)
     new_end = normalize_dt(update_data.end_time) if update_data.end_time is not None else normalize_dt(meeting.end_time)
 
@@ -275,7 +257,6 @@ def get_calendar_events(
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user)
 ):
-    # 1. Kiểm tra quyền truy cập workspace
     check_workspace_membership(workspace_id, current_user.id, db)
 
     from_dt = parse_flexible_datetime(from_date)
@@ -283,7 +264,6 @@ def get_calendar_events(
 
     events = []
 
-    # 2. Lấy dữ liệu Cuộc họp (Meetings)
     meeting_query = db.query(models.Meeting).filter(models.Meeting.workspace_id == workspace_id)
     if from_dt:
         meeting_query = meeting_query.filter(models.Meeting.end_time >= from_dt)
@@ -304,7 +284,6 @@ def get_calendar_events(
             workspace_id=m.workspace_id
         ))
 
-    # 3. Lấy dữ liệu Hạn chót Task (Tasks with due_date)
     task_query = db.query(models.Task).filter(
         models.Task.workspace_id == workspace_id,
         models.Task.due_date.isnot(None)
@@ -329,10 +308,7 @@ def get_calendar_events(
             workspace_id=t.workspace_id
         ))
 
-    # Sắp xếp các sự kiện theo thứ tự thời gian tăng dần
     events.sort(key=lambda x: x.start_time)
     return events
-
-
 
 

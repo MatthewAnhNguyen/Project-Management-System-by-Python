@@ -9,7 +9,6 @@ def seed():
     sys.stdout.reconfigure(encoding='utf-8')
     db = SessionLocal()
 
-    # 1. Tìm workspace 'lập trình web'
     ws = db.query(models.Workspace).filter(models.Workspace.id == '8o99jrSZTPEf').first()
     if not ws:
         ws = db.query(models.Workspace).first()
@@ -22,7 +21,6 @@ def seed():
     owner = db.query(models.User).filter(models.User.id == ws.owner_id).first()
     owner_name = owner.username if owner else "Chủ dự án"
 
-    # 2. Danh sách 6 thành viên mới mẫu
     sample_members = [
         {"username": "Trần Thị Mai", "email": "mai.tran@gmail.com"},
         {"username": "Lê Hoàng Nam", "email": "nam.le@gmail.com"},
@@ -53,7 +51,6 @@ def seed():
             print(f"User đã tồn tại: {user.username} (#{user.id})")
         created_users.append(user)
 
-    # 3. Thêm vào WorkspaceMember
     added_count = 0
     for user in created_users:
         exists = db.query(models.WorkspaceMember).filter(
@@ -71,7 +68,6 @@ def seed():
             db.commit()
             db.refresh(wm)
 
-            # Log activity
             log_workspace_activity(
                 workspace_id=ws.id,
                 user_id=owner.id if owner else user.id,
